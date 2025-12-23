@@ -145,11 +145,9 @@ const StudentAppointments: React.FC = () => {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2">
-                          <div>
-                            <h3 className="font-semibold text-foreground">{apt.title}</h3>
-                            <p className="text-sm text-muted-foreground">with {apt.staffName}</p>
-                          </div>
-                          <StatusBadge status={apt.status} variant={getStatusVariant(apt.status)} />
+                          <StatusBadge variant={getStatusVariant(apt.status)}>
+                            {apt.status}
+                          </StatusBadge>
                         </div>
                         <div className="flex flex-wrap gap-4 mt-2 text-sm text-muted-foreground">
                           <div className="flex items-center gap-1">
@@ -205,7 +203,7 @@ const StudentAppointments: React.FC = () => {
                         </p>
                       </div>
                     </div>
-                    <StatusBadge status={apt.status} variant={getStatusVariant(apt.status)} />
+                    <StatusBadge variant={getStatusVariant(apt.status)}>{apt.status}</StatusBadge>
                   </div>
                 ))}
               </div>

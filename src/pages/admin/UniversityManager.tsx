@@ -235,10 +235,9 @@ const UniversityManager: React.FC = () => {
                         <span className="font-medium text-foreground">{uni.studentsPlaced}</span>
                       </td>
                       <td className="p-4">
-                        <StatusBadge 
-                          status={uni.isActive ? 'Active' : 'Inactive'} 
-                          variant={uni.isActive ? 'success' : 'muted'} 
-                        />
+                        <StatusBadge variant={uni.isActive ? 'success' : 'muted'}>
+                          {uni.isActive ? 'Active' : 'Inactive'}
+                        </StatusBadge>
                       </td>
                       <td className="p-4">
                         <div className="flex items-center justify-end">
