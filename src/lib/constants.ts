@@ -34,6 +34,7 @@ import {
   Mail,
   Phone,
   MapPin,
+  UserCog,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -74,6 +75,7 @@ export {
   Mail,
   Phone,
   MapPin,
+  UserCog,
 };
 
 export type { LucideIcon };
@@ -92,7 +94,9 @@ export const studentNavItems: NavItem[] = [
   { label: 'My Documents', path: '/student/documents', icon: FileText },
   { label: 'Application Tracker', path: '/student/applications', icon: ClipboardList },
   { label: 'Financials', path: '/student/financials', icon: CreditCard },
+  { label: 'Appointments', path: '/student/appointments', icon: Calendar },
   { label: 'My Offers', path: '/student/offers', icon: Gift },
+  { label: 'Settings', path: '/student/settings', icon: Settings },
 ];
 
 export const staffNavItems: NavItem[] = [
@@ -100,22 +104,27 @@ export const staffNavItems: NavItem[] = [
   { label: 'Lead Manager', path: '/staff/leads', icon: UserPlus },
   { label: 'Active Students', path: '/staff/students', icon: Users },
   { label: 'Contract Manager', path: '/staff/contracts', icon: FileSignature },
+  { label: 'University List', path: '/staff/universities', icon: Building2 },
+  { label: 'Calendar', path: '/staff/calendar', icon: Calendar },
+  { label: 'My Profile', path: '/staff/profile', icon: User },
 ];
 
 export const adminNavItems: NavItem[] = [
   { label: 'Dashboard', path: '/admin/dashboard', icon: LayoutDashboard },
   { label: 'Application Queue', path: '/admin/applications', icon: ListTodo },
   { label: 'Financial Hub', path: '/admin/financials', icon: Wallet },
+  { label: 'Staff Manager', path: '/admin/staff', icon: UserCog },
+  { label: 'University Manager', path: '/admin/universities', icon: Building2 },
   { label: 'Audit Logs', path: '/admin/audit', icon: History },
   { label: 'Settings', path: '/admin/settings', icon: Settings },
 ];
 
 // Application steps for progress tracking
 export const applicationSteps = [
-  { step: 1, label: 'Lead', description: 'Initial inquiry' },
-  { step: 2, label: 'Contracted', description: 'Agreement signed' },
-  { step: 3, label: 'Documents', description: 'Collecting documents' },
-  { step: 4, label: 'Submitted', description: 'Application submitted' },
+  { step: 1, label: 'Lead', description: 'Initial inquiry & conversion' },
+  { step: 2, label: 'Contracted', description: 'Agreement signed & deposit paid' },
+  { step: 3, label: 'Documents', description: 'Profile building & documents' },
+  { step: 4, label: 'Processing', description: 'Application submitted & review' },
   { step: 5, label: 'Offer Released', description: 'Admission offer received' },
 ];
 
@@ -136,8 +145,10 @@ export const statusConfig = {
   
   // Contract statuses
   draft: { label: 'Draft', color: 'muted', icon: FileText },
+  pending_signature: { label: 'Pending Signature', color: 'warning', icon: Clock },
   signed: { label: 'Signed', color: 'success', icon: CheckCircle },
   expired: { label: 'Expired', color: 'error', icon: XCircle },
+  cancelled: { label: 'Cancelled', color: 'muted', icon: XCircle },
   
   // Invoice statuses
   paid: { label: 'Paid', color: 'success', icon: CheckCircle },
@@ -148,23 +159,68 @@ export const statusConfig = {
   submitted: { label: 'Submitted', color: 'primary', icon: Upload },
   accepted: { label: 'Accepted', color: 'success', icon: CheckCircle },
   rejected: { label: 'Rejected', color: 'error', icon: XCircle },
+  pending_admin: { label: 'Pending Review', color: 'warning', icon: Clock },
+  approved: { label: 'Approved', color: 'success', icon: CheckCircle },
+  submitted_to_uni: { label: 'Submitted to University', color: 'primary', icon: Upload },
+  returned_by_school: { label: 'Returned by School', color: 'warning', icon: AlertCircle },
+  
+  // Student statuses
+  pending_contract: { label: 'Pending Contract', color: 'warning', icon: Clock },
+  contract_signed: { label: 'Contract Signed', color: 'success', icon: CheckCircle },
+  active_profile: { label: 'Active - Profile Building', color: 'primary', icon: User },
+  submitted_to_admin: { label: 'Submitted to Admin', color: 'warning', icon: Upload },
+  returned_by_admin: { label: 'Returned by Admin', color: 'error', icon: AlertCircle },
+  offer_received: { label: 'Offer Received', color: 'success', icon: Gift },
+  offer_released: { label: 'Offer Released', color: 'success', icon: Gift },
+  completed: { label: 'Completed', color: 'success', icon: CheckCircle },
 } as const;
 
-// Mock data for development
+// Study goal options
+export const studyGoalOptions = [
+  { value: 'diploma', label: 'Diploma' },
+  { value: 'bachelor', label: 'Bachelor\'s Degree' },
+  { value: 'masters', label: 'Master\'s Degree' },
+  { value: 'phd', label: 'PhD' },
+];
+
+// Country options
+export const countryOptions = [
+  { value: 'china', label: 'China' },
+  { value: 'india', label: 'India' },
+  { value: 'turkey', label: 'Turkey' },
+  { value: 'other', label: 'Other' },
+];
+
+// Scholarship type labels
+export const scholarshipLabels = {
+  self_support: 'Self-Support',
+  partial_b: 'Partial B',
+  partial_a: 'Partial A',
+  full_b: 'Full B',
+  full_a: 'Full A',
+};
+
+// Mock data for backward compatibility
 export const mockStudent = {
   id: 'student-1',
   email: 'john.doe@email.com',
   name: 'John Doe',
   role: 'student' as const,
-  phone: '+1 234 567 890',
+  phone: '+255 755 987 654',
   createdAt: new Date('2024-01-15'),
+  isActive: true,
   applicationStatus: 'documents_pending' as const,
-  nationality: 'United States',
+  status: 'active_profile' as const,
+  assignedStaffId: 'staff-1',
+  nationality: 'Tanzania',
   dateOfBirth: new Date('2000-05-15'),
   passportNumber: 'AB1234567',
   currentStep: 3,
   offersUnlocked: false,
-  assignedStaffId: 'staff-1',
+  isProfileLocked: false,
+  depositPaid: 750,
+  balancePaid: 0,
+  totalOwed: 500,
 };
 
 export const mockStaff = {
@@ -172,11 +228,14 @@ export const mockStaff = {
   email: 'sarah.johnson@eduflare.com',
   name: 'Sarah Johnson',
   role: 'staff' as const,
-  phone: '+1 555 123 456',
+  phone: '+255 755 123 456',
   createdAt: new Date('2023-06-01'),
+  isActive: true,
   department: 'Student Services',
-  commission: 12500,
-  pendingCommission: 3200,
+  commission: 240000,
+  totalCommission: 240000,
+  pendingCommission: 60000,
+  paidCommission: 180000,
 };
 
 export const mockAdmin = {
@@ -184,11 +243,14 @@ export const mockAdmin = {
   email: 'admin@eduflare.com',
   name: 'Michael Chen',
   role: 'admin' as const,
-  phone: '+1 555 000 001',
+  phone: '+255 755 000 001',
   createdAt: new Date('2022-01-01'),
+  isActive: true,
   permissions: ['all'],
+  canImpersonate: true,
 };
 
+// Additional mock data exports for backward compatibility
 export const mockDocuments = [
   { id: 'doc-1', name: 'Passport Copy', type: 'identity', status: 'verified' as const, uploadedAt: new Date(), studentId: 'student-1' },
   { id: 'doc-2', name: 'Academic Transcript', type: 'academic', status: 'verified' as const, uploadedAt: new Date(), studentId: 'student-1' },
@@ -233,7 +295,6 @@ export const mockNotifications = [
 export const mockAuditLogs = [
   { id: 'log-1', userId: 'admin-1', userName: 'Michael Chen', action: 'Approved Application', details: 'Application for Harvard submitted', entityType: 'application', entityId: 'app-1', timestamp: new Date(), ipAddress: '192.168.1.1' },
   { id: 'log-2', userId: 'staff-1', userName: 'Sarah Johnson', action: 'Verified Document', details: 'Passport copy verified', entityType: 'document', entityId: 'doc-1', timestamp: new Date(), ipAddress: '192.168.1.2' },
-  { id: 'log-3', userId: 'admin-1', userName: 'Michael Chen', action: 'Generated Contract', details: 'Contract generated for John Doe', entityType: 'contract', entityId: 'con-1', timestamp: new Date(), ipAddress: '192.168.1.1' },
 ];
 
 export const mockKPIData = {
