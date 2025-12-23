@@ -129,8 +129,9 @@ const StudentDashboard: React.FC = () => {
               <AlertCard
                 key={alert.id}
                 title={alert.title}
-                message={alert.message}
-                type={alert.type}
+                description={alert.message}
+                variant={alert.type as 'info' | 'success' | 'warning' | 'error'}
+                icon={AlertCircle}
                 action={{ label: 'View Details', onClick: () => {} }}
               />
             ))}
