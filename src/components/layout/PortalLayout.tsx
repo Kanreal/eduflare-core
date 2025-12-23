@@ -4,7 +4,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ChevronLeft, 
   ChevronRight, 
-  Bell, 
   LogOut, 
   Menu,
   X,
@@ -13,14 +12,14 @@ import {
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { Avatar } from '@/components/ui/EduFlareUI';
+import { NotificationBell } from '@/components/NotificationBell';
+import { AdminImpersonation } from '@/components/AdminImpersonation';
 import { 
   studentNavItems, 
   staffNavItems, 
   adminNavItems,
-  mockNotifications,
   type NavItem,
 } from '@/lib/constants';
-import { UserRole } from '@/types';
 
 interface PortalLayoutProps {
   children: React.ReactNode;
@@ -56,13 +55,11 @@ const getPortalTitle = (portal: 'student' | 'staff' | 'admin'): string => {
 export const PortalLayout: React.FC<PortalLayoutProps> = ({ children, portal }) => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const location = useLocation();
-  const { user, logout } = useAuth();
+  const { user, logout, role } = useAuth();
 
   const navItems = getNavItems(portal);
   const portalTitle = getPortalTitle(portal);
-  const unreadNotifications = mockNotifications.filter(n => !n.read).length;
 
   const isAdminPortal = portal === 'admin';
 
@@ -288,55 +285,13 @@ export const PortalLayout: React.FC<PortalLayoutProps> = ({ children, portal }) 
 
             {/* Right */}
             <div className="flex items-center gap-2">
-              {/* Notifications */}
-              <div className="relative">
-                <button
-                  onClick={() => setNotificationsOpen(!notificationsOpen)}
-                  className="relative p-2 rounded-lg text-muted-foreground hover:bg-muted transition-colors"
-                >
-                  <Bell className="w-5 h-5" />
-                  {unreadNotifications > 0 && (
-                    <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-error" />
-                  )}
-                </button>
+              {/* Admin Impersonation */}
+              {role === 'admin' && (
+                <AdminImpersonation />
+              )}
 
-                {/* Notifications Dropdown */}
-                <AnimatePresence>
-                  {notificationsOpen && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 8, scale: 0.95 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 8, scale: 0.95 }}
-                      transition={{ duration: 0.15 }}
-                      className="absolute right-0 top-full mt-2 w-80 bg-card rounded-xl border border-border shadow-elevated overflow-hidden"
-                    >
-                      <div className="p-3 border-b border-border">
-                        <h3 className="font-semibold text-sm">Notifications</h3>
-                      </div>
-                      <div className="max-h-64 overflow-y-auto">
-                        {mockNotifications.length > 0 ? (
-                          mockNotifications.map((notification) => (
-                            <div
-                              key={notification.id}
-                              className={cn(
-                                'p-3 border-b border-border/50 last:border-0 hover:bg-muted/50 transition-colors cursor-pointer',
-                                !notification.read && 'bg-primary/5'
-                              )}
-                            >
-                              <p className="text-sm font-medium text-foreground">{notification.title}</p>
-                              <p className="text-xs text-muted-foreground mt-0.5">{notification.message}</p>
-                            </div>
-                          ))
-                        ) : (
-                          <div className="p-6 text-center text-muted-foreground text-sm">
-                            No new notifications
-                          </div>
-                        )}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
+              {/* Notifications */}
+              <NotificationBell />
 
               {/* User Menu */}
               <div className="flex items-center gap-3 pl-2 border-l border-border ml-2">
@@ -368,14 +323,6 @@ export const PortalLayout: React.FC<PortalLayoutProps> = ({ children, portal }) 
           </motion.div>
         </main>
       </div>
-
-      {/* Click outside to close notifications */}
-      {notificationsOpen && (
-        <div
-          className="fixed inset-0 z-20"
-          onClick={() => setNotificationsOpen(false)}
-        />
-      )}
     </div>
   );
 };
