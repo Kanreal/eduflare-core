@@ -35,6 +35,8 @@ import StudentDetail from "./pages/staff/StudentDetail";
 import UniversityList from "./pages/staff/UniversityList";
 import StaffCalendar from "./pages/staff/StaffCalendar";
 import StaffProfile from "./pages/staff/StaffProfile";
+import ApplicationManager from "./pages/staff/ApplicationManager";
+import StaffApplicationDetail from "./pages/staff/ApplicationDetail";
 
 // Admin Pages
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -91,6 +93,8 @@ const App = () => (
                 <Route path="/staff/students/:id" element={<ProtectedRoute allowedRoles={['staff', 'admin']}><StudentDetail /></ProtectedRoute>} />
                 <Route path="/staff/contracts" element={<ProtectedRoute allowedRoles={['staff', 'admin']}><ContractManager /></ProtectedRoute>} />
                 <Route path="/staff/universities" element={<ProtectedRoute allowedRoles={['staff', 'admin']}><UniversityList /></ProtectedRoute>} />
+                <Route path="/staff/applications" element={<ProtectedRoute allowedRoles={['staff', 'admin']}><ApplicationManager /></ProtectedRoute>} />
+                <Route path="/staff/applications/:id" element={<ProtectedRoute allowedRoles={['staff', 'admin']}><StaffApplicationDetail /></ProtectedRoute>} />
                 <Route path="/staff/calendar" element={<ProtectedRoute allowedRoles={['staff', 'admin']}><StaffCalendar /></ProtectedRoute>} />
                 <Route path="/staff/profile" element={<ProtectedRoute allowedRoles={['staff', 'admin']}><StaffProfile /></ProtectedRoute>} />
                 
