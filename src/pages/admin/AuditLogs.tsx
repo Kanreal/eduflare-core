@@ -11,6 +11,8 @@ import {
   CreditCard,
   Settings,
   Eye,
+  EyeOff,
+  UserCheck,
 } from 'lucide-react';
 import { PortalLayout } from '@/components/layout/PortalLayout';
 import { StatusBadge, Avatar } from '@/components/ui/EduFlareUI';
@@ -23,6 +25,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useImpersonation } from '@/contexts/ImpersonationContext';
 import { mockAuditLogs } from '@/lib/constants';
 
 // Extended mock audit logs
@@ -67,6 +71,8 @@ const AuditLogs: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [entityFilter, setEntityFilter] = useState<string>('all');
   const [dateFilter, setDateFilter] = useState<string>('all');
+  const [activeTab, setActiveTab] = useState('system');
+  const { impersonationLogs } = useImpersonation();
 
   const filteredLogs = extendedAuditLogs.filter((log) => {
     const matchesSearch = log.userName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -102,6 +108,18 @@ const AuditLogs: React.FC = () => {
     return date.toLocaleDateString();
   };
 
+  const getImpersonationActionIcon = (action: string) => {
+    if (action === 'START_IMPERSONATION') return Eye;
+    if (action === 'END_IMPERSONATION') return EyeOff;
+    return UserCheck;
+  };
+
+  const getImpersonationActionColor = (action: string) => {
+    if (action === 'START_IMPERSONATION') return 'warning';
+    if (action === 'END_IMPERSONATION') return 'success';
+    return 'muted';
+  };
+
   return (
     <PortalLayout portal="admin">
       <div className="space-y-6">
@@ -134,145 +152,284 @@ const AuditLogs: React.FC = () => {
           </div>
         </div>
 
-        {/* Filters */}
-        <div className="flex flex-col lg:flex-row gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Search by user, action, or details..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-          <Select value={entityFilter} onValueChange={setEntityFilter}>
-            <SelectTrigger className="w-full lg:w-48">
-              <Filter className="w-4 h-4 mr-2" />
-              <SelectValue placeholder="Entity Type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Entities</SelectItem>
-              <SelectItem value="application">Applications</SelectItem>
-              <SelectItem value="document">Documents</SelectItem>
-              <SelectItem value="contract">Contracts</SelectItem>
-              <SelectItem value="payment">Payments</SelectItem>
-              <SelectItem value="student">Students</SelectItem>
-              <SelectItem value="settings">Settings</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={dateFilter} onValueChange={setDateFilter}>
-            <SelectTrigger className="w-full lg:w-40">
-              <Clock className="w-4 h-4 mr-2" />
-              <SelectValue placeholder="Time Range" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Time</SelectItem>
-              <SelectItem value="today">Today</SelectItem>
-              <SelectItem value="week">This Week</SelectItem>
-              <SelectItem value="month">This Month</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        {/* Tabs for System Logs and Impersonation Logs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+          <TabsList className="grid w-full max-w-md grid-cols-2">
+            <TabsTrigger value="system" className="gap-2">
+              <FileText className="w-4 h-4" />
+              System Logs
+            </TabsTrigger>
+            <TabsTrigger value="impersonation" className="gap-2">
+              <Eye className="w-4 h-4" />
+              Impersonation ({impersonationLogs.length})
+            </TabsTrigger>
+          </TabsList>
 
-        {/* Audit Log Timeline */}
-        <div className="rounded-xl border border-border bg-card p-6 shadow-card">
-          <div className="space-y-0">
-            {filteredLogs.map((log, index) => {
-              const EntityIcon = getEntityIcon(log.entityType);
-              const actionColor = getActionColor(log.action);
-              
-              return (
-                <motion.div
-                  key={log.id}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.03 }}
-                  className="relative pl-8 pb-8 last:pb-0"
-                >
-                  {/* Timeline line */}
-                  {index < filteredLogs.length - 1 && (
-                    <div className="absolute left-[11px] top-8 bottom-0 w-0.5 bg-border" />
-                  )}
-                  
-                  {/* Timeline dot */}
-                  <div className={`absolute left-0 top-1 w-6 h-6 rounded-full flex items-center justify-center ${
-                    actionColor === 'success' ? 'bg-success/20' :
-                    actionColor === 'error' ? 'bg-error/20' :
-                    actionColor === 'warning' ? 'bg-warning/20' : 'bg-primary/20'
-                  }`}>
-                    <EntityIcon className={`w-3 h-3 ${
-                      actionColor === 'success' ? 'text-success' :
-                      actionColor === 'error' ? 'text-error' :
-                      actionColor === 'warning' ? 'text-warning' : 'text-primary'
-                    }`} />
-                  </div>
-                  
-                  {/* Content */}
-                  <div className="bg-muted/30 rounded-lg p-4 hover:bg-muted/50 transition-colors">
-                    <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-3">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-medium text-foreground">{log.action}</span>
-                          <StatusBadge variant={actionColor as 'success' | 'error' | 'warning' | 'primary'} size="sm">
-                            {log.entityType}
-                          </StatusBadge>
+          <TabsContent value="system" className="space-y-4">
+            {/* Filters */}
+            <div className="flex flex-col lg:flex-row gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by user, action, or details..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              <Select value={entityFilter} onValueChange={setEntityFilter}>
+                <SelectTrigger className="w-full lg:w-48">
+                  <Filter className="w-4 h-4 mr-2" />
+                  <SelectValue placeholder="Entity Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Entities</SelectItem>
+                  <SelectItem value="application">Applications</SelectItem>
+                  <SelectItem value="document">Documents</SelectItem>
+                  <SelectItem value="contract">Contracts</SelectItem>
+                  <SelectItem value="payment">Payments</SelectItem>
+                  <SelectItem value="student">Students</SelectItem>
+                  <SelectItem value="settings">Settings</SelectItem>
+                </SelectContent>
+              </Select>
+            <Select value={dateFilter} onValueChange={setDateFilter}>
+              <SelectTrigger className="w-full lg:w-40">
+                <Clock className="w-4 h-4 mr-2" />
+                <SelectValue placeholder="Time Range" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Time</SelectItem>
+                <SelectItem value="today">Today</SelectItem>
+                <SelectItem value="week">This Week</SelectItem>
+                <SelectItem value="month">This Month</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Audit Log Timeline */}
+          <div className="rounded-xl border border-border bg-card p-6 shadow-card">
+            <div className="space-y-0">
+              {filteredLogs.map((log, index) => {
+                const EntityIcon = getEntityIcon(log.entityType);
+                const actionColor = getActionColor(log.action);
+                
+                return (
+                  <motion.div
+                    key={log.id}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.03 }}
+                    className="relative pl-8 pb-8 last:pb-0"
+                  >
+                    {/* Timeline line */}
+                    {index < filteredLogs.length - 1 && (
+                      <div className="absolute left-[11px] top-8 bottom-0 w-0.5 bg-border" />
+                    )}
+                    
+                    {/* Timeline dot */}
+                    <div className={`absolute left-0 top-1 w-6 h-6 rounded-full flex items-center justify-center ${
+                      actionColor === 'success' ? 'bg-success/20' :
+                      actionColor === 'error' ? 'bg-error/20' :
+                      actionColor === 'warning' ? 'bg-warning/20' : 'bg-primary/20'
+                    }`}>
+                      <EntityIcon className={`w-3 h-3 ${
+                        actionColor === 'success' ? 'text-success' :
+                        actionColor === 'error' ? 'text-error' :
+                        actionColor === 'warning' ? 'text-warning' : 'text-primary'
+                      }`} />
+                    </div>
+                    
+                    {/* Content */}
+                    <div className="bg-muted/30 rounded-lg p-4 hover:bg-muted/50 transition-colors">
+                      <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-3">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-medium text-foreground">{log.action}</span>
+                            <StatusBadge variant={actionColor as 'success' | 'error' | 'warning' | 'primary'} size="sm">
+                              {log.entityType}
+                            </StatusBadge>
+                          </div>
+                          <p className="text-sm text-muted-foreground mt-1">{log.details}</p>
+                          <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
+                            <span className="flex items-center gap-1">
+                              <Avatar name={log.userName} size="sm" className="w-5 h-5 text-[8px]" />
+                              {log.userName}
+                            </span>
+                            {log.ipAddress && (
+                              <span className="font-mono">{log.ipAddress}</span>
+                            )}
+                          </div>
                         </div>
-                        <p className="text-sm text-muted-foreground mt-1">{log.details}</p>
-                        <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            <Avatar name={log.userName} size="sm" className="w-5 h-5 text-[8px]" />
-                            {log.userName}
-                          </span>
-                          {log.ipAddress && (
-                            <span className="font-mono">{log.ipAddress}</span>
-                          )}
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground whitespace-nowrap">
+                          <Clock className="w-4 h-4" />
+                          <span>{formatTimestamp(log.timestamp)}</span>
                         </div>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground whitespace-nowrap">
-                        <Clock className="w-4 h-4" />
-                        <span>{formatTimestamp(log.timestamp)}</span>
                       </div>
                     </div>
-                  </div>
-                </motion.div>
-              );
-            })}
-          </div>
-          
-          {filteredLogs.length === 0 && (
-            <div className="text-center py-12">
-              <Shield className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-              <p className="font-medium text-foreground">No logs found</p>
-              <p className="text-sm text-muted-foreground mt-1">Try adjusting your search or filter criteria</p>
+                  </motion.div>
+                );
+              })}
             </div>
-          )}
-        </div>
+            
+            {filteredLogs.length === 0 && (
+              <div className="text-center py-12">
+                <Shield className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                <p className="font-medium text-foreground">No logs found</p>
+                <p className="text-sm text-muted-foreground mt-1">Try adjusting your search or filter criteria</p>
+              </div>
+            )}
+          </div>
 
-        {/* Stats Footer */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-center">
-          <div className="rounded-lg border border-border bg-card p-4">
-            <p className="text-2xl font-bold text-foreground tabular-nums">{extendedAuditLogs.length}</p>
-            <p className="text-xs text-muted-foreground">Total Events</p>
+          {/* Stats Footer */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-center">
+            <div className="rounded-lg border border-border bg-card p-4">
+              <p className="text-2xl font-bold text-foreground tabular-nums">{extendedAuditLogs.length}</p>
+              <p className="text-xs text-muted-foreground">Total Events</p>
+            </div>
+            <div className="rounded-lg border border-border bg-card p-4">
+              <p className="text-2xl font-bold text-foreground tabular-nums">
+                {new Set(extendedAuditLogs.map(l => l.userId)).size}
+              </p>
+              <p className="text-xs text-muted-foreground">Active Users</p>
+            </div>
+            <div className="rounded-lg border border-border bg-card p-4">
+              <p className="text-2xl font-bold text-foreground tabular-nums">
+                {extendedAuditLogs.filter(l => l.timestamp >= new Date(Date.now() - 24 * 60 * 60 * 1000)).length}
+              </p>
+              <p className="text-xs text-muted-foreground">Last 24 Hours</p>
+            </div>
+            <div className="rounded-lg border border-border bg-card p-4">
+              <p className="text-2xl font-bold text-foreground tabular-nums">
+                {new Set(extendedAuditLogs.map(l => l.entityType)).size}
+              </p>
+              <p className="text-xs text-muted-foreground">Entity Types</p>
+            </div>
           </div>
-          <div className="rounded-lg border border-border bg-card p-4">
-            <p className="text-2xl font-bold text-foreground tabular-nums">
-              {new Set(extendedAuditLogs.map(l => l.userId)).size}
-            </p>
-            <p className="text-xs text-muted-foreground">Active Users</p>
+        </TabsContent>
+
+        <TabsContent value="impersonation" className="space-y-4">
+          {/* Impersonation Warning */}
+          <div className="rounded-xl border border-warning/30 bg-warning/5 p-4">
+            <div className="flex items-start gap-3">
+              <Eye className="w-5 h-5 text-warning mt-0.5" />
+              <div>
+                <p className="font-medium text-foreground">Impersonation Audit Log</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  All impersonation sessions are logged for security and accountability. 
+                  Actions taken while impersonating are recorded with both the admin and impersonated user context.
+                </p>
+              </div>
+            </div>
           </div>
-          <div className="rounded-lg border border-border bg-card p-4">
-            <p className="text-2xl font-bold text-foreground tabular-nums">
-              {extendedAuditLogs.filter(l => l.timestamp >= new Date(Date.now() - 24 * 60 * 60 * 1000)).length}
-            </p>
-            <p className="text-xs text-muted-foreground">Last 24 Hours</p>
+
+          {/* Impersonation Logs Timeline */}
+          <div className="rounded-xl border border-border bg-card p-6 shadow-card">
+            <div className="space-y-0">
+              {impersonationLogs.length > 0 ? (
+                impersonationLogs.slice().reverse().map((log, index) => {
+                  const ActionIcon = getImpersonationActionIcon(log.action);
+                  const actionColor = getImpersonationActionColor(log.action);
+                  
+                  return (
+                    <motion.div
+                      key={log.id}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.03 }}
+                      className="relative pl-8 pb-8 last:pb-0"
+                    >
+                      {/* Timeline line */}
+                      {index < impersonationLogs.length - 1 && (
+                        <div className="absolute left-[11px] top-8 bottom-0 w-0.5 bg-border" />
+                      )}
+                      
+                      {/* Timeline dot */}
+                      <div className={`absolute left-0 top-1 w-6 h-6 rounded-full flex items-center justify-center ${
+                        actionColor === 'success' ? 'bg-success/20' :
+                        actionColor === 'warning' ? 'bg-warning/20' : 'bg-muted'
+                      }`}>
+                        <ActionIcon className={`w-3 h-3 ${
+                          actionColor === 'success' ? 'text-success' :
+                          actionColor === 'warning' ? 'text-warning' : 'text-muted-foreground'
+                        }`} />
+                      </div>
+                      
+                      {/* Content */}
+                      <div className="bg-muted/30 rounded-lg p-4 hover:bg-muted/50 transition-colors">
+                        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-3">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-medium text-foreground">
+                                {log.action === 'START_IMPERSONATION' ? 'Started Impersonation' : 
+                                 log.action === 'END_IMPERSONATION' ? 'Ended Impersonation' : 
+                                 'Impersonation Expired'}
+                              </span>
+                              <StatusBadge variant={log.impersonationType === 'staff' ? 'warning' : 'primary'} size="sm">
+                                {log.impersonationType}
+                              </StatusBadge>
+                            </div>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              <strong>{log.actorAdminName}</strong> {log.action === 'START_IMPERSONATION' ? 'started viewing as' : 'stopped viewing as'}{' '}
+                              <strong>{log.impersonatedUserName}</strong>
+                            </p>
+                            <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground flex-wrap">
+                              <span className="flex items-center gap-1">
+                                <Shield className="w-3 h-3" />
+                                Admin: {log.actorAdminName}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <User className="w-3 h-3" />
+                                Target: {log.impersonatedUserName}
+                              </span>
+                              {log.userAgent && (
+                                <span className="font-mono text-[10px] truncate max-w-[200px]" title={log.userAgent}>
+                                  {log.userAgent.split(' ')[0]}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground whitespace-nowrap">
+                            <Clock className="w-4 h-4" />
+                            <span>{formatTimestamp(log.timestamp)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  );
+                })
+              ) : (
+                <div className="text-center py-12">
+                  <Eye className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="font-medium text-foreground">No impersonation events</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Impersonation events will appear here when an admin views the system as another user
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
-          <div className="rounded-lg border border-border bg-card p-4">
-            <p className="text-2xl font-bold text-foreground tabular-nums">
-              {new Set(extendedAuditLogs.map(l => l.entityType)).size}
-            </p>
-            <p className="text-xs text-muted-foreground">Entity Types</p>
+
+          {/* Impersonation Stats */}
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 text-center">
+            <div className="rounded-lg border border-border bg-card p-4">
+              <p className="text-2xl font-bold text-foreground tabular-nums">{impersonationLogs.length}</p>
+              <p className="text-xs text-muted-foreground">Total Events</p>
+            </div>
+            <div className="rounded-lg border border-border bg-card p-4">
+              <p className="text-2xl font-bold text-foreground tabular-nums">
+                {impersonationLogs.filter(l => l.action === 'START_IMPERSONATION').length}
+              </p>
+              <p className="text-xs text-muted-foreground">Sessions Started</p>
+            </div>
+            <div className="rounded-lg border border-border bg-card p-4">
+              <p className="text-2xl font-bold text-foreground tabular-nums">
+                {impersonationLogs.filter(l => l.impersonationType === 'student').length}
+              </p>
+              <p className="text-xs text-muted-foreground">Student Views</p>
+            </div>
           </div>
-        </div>
+        </TabsContent>
+      </Tabs>
       </div>
     </PortalLayout>
   );
