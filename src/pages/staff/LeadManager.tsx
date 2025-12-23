@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { 
   Plus, 
   Search, 
@@ -10,6 +11,8 @@ import {
   UserPlus,
   ArrowUpRight,
   Calendar,
+  Eye,
+  Edit,
 } from 'lucide-react';
 import { PortalLayout } from '@/components/layout/PortalLayout';
 import { StatusBadge, Avatar, EmptyState } from '@/components/ui/EduFlareUI';
@@ -19,6 +22,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
@@ -38,7 +42,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { mockLeads } from '@/lib/constants';
+import { useEduFlare } from '@/contexts/EduFlareContext';
 import { LeadStatus } from '@/types';
 
 // Local lead type for this component's mock data
@@ -64,22 +68,50 @@ const getStatusVariant = (status: string): 'primary' | 'error' | 'muted' | 'succ
 };
 
 const LeadManager: React.FC = () => {
+  const navigate = useNavigate();
+  const { leads, convertLeadToStudent, staff, logAudit } = useEduFlare();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isConvertDialogOpen, setIsConvertDialogOpen] = useState(false);
   const [selectedLead, setSelectedLead] = useState<LocalLead | null>(null);
 
-  const filteredLeads = mockLeads.filter((lead) => {
+  const filteredLeads = leads.filter((lead) => {
     const matchesSearch = lead.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       lead.email.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === 'all' || lead.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
+  const handleViewLead = (leadId: string) => {
+    navigate(`/staff/leads/${leadId}`);
+  };
+
   const handleConvertToStudent = (lead: LocalLead) => {
     setSelectedLead(lead);
     setIsConvertDialogOpen(true);
+  };
+
+  const confirmConversion = () => {
+    if (!selectedLead) return;
+    const assignedStaffId = selectedLead.assignedTo || staff[0]?.id;
+    if (assignedStaffId) {
+      const newStudent = convertLeadToStudent(selectedLead.id, assignedStaffId);
+      if (newStudent) {
+        logAudit({
+          userId: 'current-user',
+          userName: 'Current User',
+          userRole: 'staff',
+          action: 'Lead Converted',
+          details: `Converted lead ${selectedLead.name} to student`,
+          entityType: 'lead',
+          entityId: selectedLead.id,
+          isOverride: false,
+        });
+        navigate(`/staff/students/${newStudent.id}`);
+      }
+    }
+    setIsConvertDialogOpen(false);
   };
 
   return (
@@ -176,10 +208,10 @@ const LeadManager: React.FC = () => {
         {/* Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[
-            { label: 'Total Leads', value: mockLeads.length, color: 'text-foreground' },
-            { label: 'New', value: mockLeads.filter(l => l.status === 'new').length, color: 'text-primary' },
-            { label: 'Hot', value: mockLeads.filter(l => l.status === 'hot').length, color: 'text-error' },
-            { label: 'Cold', value: mockLeads.filter(l => l.status === 'cold').length, color: 'text-success' },
+            { label: 'Total Leads', value: leads.length, color: 'text-foreground' },
+            { label: 'New', value: leads.filter(l => l.status === 'new').length, color: 'text-primary' },
+            { label: 'Hot', value: leads.filter(l => l.status === 'hot').length, color: 'text-error' },
+            { label: 'Converted', value: leads.filter(l => l.status === 'converted').length, color: 'text-success' },
           ].map((stat, i) => (
             <div key={i} className="rounded-lg border border-border bg-card p-4">
               <p className="text-sm text-muted-foreground">{stat.label}</p>
@@ -250,9 +282,19 @@ const LeadManager: React.FC = () => {
                       <td className="p-4">
                         <div className="flex items-center justify-end gap-2">
                           <Button 
+                            variant="outline"
                             size="sm" 
                             className="hidden sm:flex gap-1"
-                            onClick={() => handleConvertToStudent(lead)}
+                            onClick={() => handleViewLead(lead.id)}
+                          >
+                            <Eye className="w-3 h-3" />
+                            View
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            className="hidden md:flex gap-1"
+                            onClick={() => handleConvertToStudent(lead as LocalLead)}
+                            disabled={lead.status === 'converted' || lead.status === 'lost'}
                           >
                             <ArrowUpRight className="w-3 h-3" />
                             Convert
@@ -264,10 +306,20 @@ const LeadManager: React.FC = () => {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem>View Details</DropdownMenuItem>
-                              <DropdownMenuItem>Edit Lead</DropdownMenuItem>
-                              <DropdownMenuItem>Schedule Call</DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleConvertToStudent(lead)}>
+                              <DropdownMenuItem onClick={() => handleViewLead(lead.id)}>
+                                <Eye className="w-4 h-4 mr-2" />
+                                View Details
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleViewLead(lead.id)}>
+                                <Edit className="w-4 h-4 mr-2" />
+                                Edit Lead
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem 
+                                onClick={() => handleConvertToStudent(lead as LocalLead)}
+                                disabled={lead.status === 'converted' || lead.status === 'lost'}
+                              >
+                                <UserPlus className="w-4 h-4 mr-2" />
                                 Convert to Student
                               </DropdownMenuItem>
                               <DropdownMenuItem className="text-error">Mark as Lost</DropdownMenuItem>
@@ -320,7 +372,7 @@ const LeadManager: React.FC = () => {
               <Button variant="outline" onClick={() => setIsConvertDialogOpen(false)}>
                 Cancel
               </Button>
-              <Button onClick={() => setIsConvertDialogOpen(false)} className="gap-2">
+              <Button onClick={confirmConversion} className="gap-2">
                 <UserPlus className="w-4 h-4" />
                 Convert to Student
               </Button>

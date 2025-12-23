@@ -29,6 +29,7 @@ import StudentSettings from "./pages/student/StudentSettings";
 // Staff Pages
 import StaffDashboard from "./pages/staff/StaffDashboard";
 import LeadManager from "./pages/staff/LeadManager";
+import LeadDetail from "./pages/staff/LeadDetail";
 import ActiveStudents from "./pages/staff/ActiveStudents";
 import ContractManager from "./pages/staff/ContractManager";
 import StudentDetail from "./pages/staff/StudentDetail";
@@ -89,6 +90,7 @@ const App = () => (
                 {/* Staff Portal Routes - Protected */}
                 <Route path="/staff/dashboard" element={<ProtectedRoute allowedRoles={['staff', 'admin']}><StaffDashboard /></ProtectedRoute>} />
                 <Route path="/staff/leads" element={<ProtectedRoute allowedRoles={['staff', 'admin']}><LeadManager /></ProtectedRoute>} />
+                <Route path="/staff/leads/:id" element={<ProtectedRoute allowedRoles={['staff', 'admin']}><LeadDetail /></ProtectedRoute>} />
                 <Route path="/staff/students" element={<ProtectedRoute allowedRoles={['staff', 'admin']}><ActiveStudents /></ProtectedRoute>} />
                 <Route path="/staff/students/:id" element={<ProtectedRoute allowedRoles={['staff', 'admin']}><StudentDetail /></ProtectedRoute>} />
                 <Route path="/staff/contracts" element={<ProtectedRoute allowedRoles={['staff', 'admin']}><ContractManager /></ProtectedRoute>} />
