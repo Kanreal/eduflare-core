@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { EduFlareProvider } from "@/contexts/EduFlareContext";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 
 // Auth Pages
 import StudentLogin from "./pages/auth/StudentLogin";
@@ -61,40 +62,42 @@ const App = () => (
               <Route path="/book-consultation" element={<BookConsultation />} />
               
               {/* Auth Routes */}
-              <Route path="/student/login" element={<StudentLogin />} />
-              <Route path="/portal/login" element={<InternalLogin />} />
+              <Route path="/login/student" element={<StudentLogin />} />
+              <Route path="/login/internal" element={<InternalLogin />} />
+              <Route path="/student/login" element={<Navigate to="/login/student" replace />} />
+              <Route path="/portal/login" element={<Navigate to="/login/internal" replace />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               
-              {/* Student Portal Routes */}
-              <Route path="/student/dashboard" element={<StudentDashboard />} />
-              <Route path="/student/profile" element={<StudentProfile />} />
-              <Route path="/student/documents" element={<StudentDocuments />} />
-              <Route path="/student/applications" element={<StudentApplications />} />
-              <Route path="/student/financials" element={<StudentFinancials />} />
-              <Route path="/student/offers" element={<StudentOffers />} />
-              <Route path="/student/appointments" element={<StudentAppointments />} />
-              <Route path="/student/settings" element={<StudentSettings />} />
+              {/* Student Portal Routes - Protected */}
+              <Route path="/student/dashboard" element={<ProtectedRoute allowedRoles={['student']}><StudentDashboard /></ProtectedRoute>} />
+              <Route path="/student/profile" element={<ProtectedRoute allowedRoles={['student']}><StudentProfile /></ProtectedRoute>} />
+              <Route path="/student/documents" element={<ProtectedRoute allowedRoles={['student']}><StudentDocuments /></ProtectedRoute>} />
+              <Route path="/student/applications" element={<ProtectedRoute allowedRoles={['student']}><StudentApplications /></ProtectedRoute>} />
+              <Route path="/student/financials" element={<ProtectedRoute allowedRoles={['student']}><StudentFinancials /></ProtectedRoute>} />
+              <Route path="/student/offers" element={<ProtectedRoute allowedRoles={['student']}><StudentOffers /></ProtectedRoute>} />
+              <Route path="/student/appointments" element={<ProtectedRoute allowedRoles={['student']}><StudentAppointments /></ProtectedRoute>} />
+              <Route path="/student/settings" element={<ProtectedRoute allowedRoles={['student']}><StudentSettings /></ProtectedRoute>} />
               
-              {/* Staff Portal Routes */}
-              <Route path="/staff/dashboard" element={<StaffDashboard />} />
-              <Route path="/staff/leads" element={<LeadManager />} />
-              <Route path="/staff/students" element={<ActiveStudents />} />
-              <Route path="/staff/students/:id" element={<StudentDetail />} />
-              <Route path="/staff/contracts" element={<ContractManager />} />
-              <Route path="/staff/universities" element={<UniversityList />} />
-              <Route path="/staff/calendar" element={<StaffCalendar />} />
-              <Route path="/staff/profile" element={<StaffProfile />} />
+              {/* Staff Portal Routes - Protected */}
+              <Route path="/staff/dashboard" element={<ProtectedRoute allowedRoles={['staff', 'admin']}><StaffDashboard /></ProtectedRoute>} />
+              <Route path="/staff/leads" element={<ProtectedRoute allowedRoles={['staff', 'admin']}><LeadManager /></ProtectedRoute>} />
+              <Route path="/staff/students" element={<ProtectedRoute allowedRoles={['staff', 'admin']}><ActiveStudents /></ProtectedRoute>} />
+              <Route path="/staff/students/:id" element={<ProtectedRoute allowedRoles={['staff', 'admin']}><StudentDetail /></ProtectedRoute>} />
+              <Route path="/staff/contracts" element={<ProtectedRoute allowedRoles={['staff', 'admin']}><ContractManager /></ProtectedRoute>} />
+              <Route path="/staff/universities" element={<ProtectedRoute allowedRoles={['staff', 'admin']}><UniversityList /></ProtectedRoute>} />
+              <Route path="/staff/calendar" element={<ProtectedRoute allowedRoles={['staff', 'admin']}><StaffCalendar /></ProtectedRoute>} />
+              <Route path="/staff/profile" element={<ProtectedRoute allowedRoles={['staff', 'admin']}><StaffProfile /></ProtectedRoute>} />
               
-              {/* Admin Portal Routes */}
-              <Route path="/admin/dashboard" element={<AdminDashboard />} />
-              <Route path="/admin/applications" element={<ApplicationQueue />} />
-              <Route path="/admin/applications/:id" element={<ApplicationDetail />} />
-              <Route path="/admin/financials" element={<FinancialHub />} />
-              <Route path="/admin/staff" element={<StaffManager />} />
-              <Route path="/admin/universities" element={<UniversityManager />} />
-              <Route path="/admin/audit" element={<AuditLogs />} />
-              <Route path="/admin/settings" element={<AdminSettings />} />
+              {/* Admin Portal Routes - Protected */}
+              <Route path="/admin/dashboard" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />
+              <Route path="/admin/applications" element={<ProtectedRoute allowedRoles={['admin']}><ApplicationQueue /></ProtectedRoute>} />
+              <Route path="/admin/applications/:id" element={<ProtectedRoute allowedRoles={['admin']}><ApplicationDetail /></ProtectedRoute>} />
+              <Route path="/admin/financials" element={<ProtectedRoute allowedRoles={['admin']}><FinancialHub /></ProtectedRoute>} />
+              <Route path="/admin/staff" element={<ProtectedRoute allowedRoles={['admin']}><StaffManager /></ProtectedRoute>} />
+              <Route path="/admin/universities" element={<ProtectedRoute allowedRoles={['admin']}><UniversityManager /></ProtectedRoute>} />
+              <Route path="/admin/audit" element={<ProtectedRoute allowedRoles={['admin']}><AuditLogs /></ProtectedRoute>} />
+              <Route path="/admin/settings" element={<ProtectedRoute allowedRoles={['admin']}><AdminSettings /></ProtectedRoute>} />
               
               {/* Catch-all */}
               <Route path="*" element={<NotFound />} />
