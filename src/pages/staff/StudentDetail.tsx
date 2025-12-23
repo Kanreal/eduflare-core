@@ -17,6 +17,7 @@ import {
   Upload,
   Eye,
   Plus,
+  Shield,
 } from 'lucide-react';
 import { PortalLayout } from '@/components/layout/PortalLayout';
 import { StatusBadge, Avatar, DocumentCard, ProgressStepper } from '@/components/ui/EduFlareUI';
@@ -31,8 +32,10 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { applicationSteps, mockDocuments } from '@/lib/constants';
+import { PassportExpiryWarning, usePassportValidation } from '@/components/PassportExpiryWarning';
+import { BatchSelector } from '@/components/BatchSelector';
 
-// Mock student detail
+// Mock student detail with passport expiry
 const mockStudentDetail = {
   id: 'std-1',
   name: 'John Doe',
@@ -41,6 +44,7 @@ const mockStudentDetail = {
   nationality: 'United States',
   dateOfBirth: new Date('2000-05-15'),
   passportNumber: 'AB1234567',
+  passportExpiry: new Date('2025-08-15'), // 8 months from now - valid
   currentStep: 3,
   status: 'documents_pending',
   applications: [
@@ -50,17 +54,37 @@ const mockStudentDetail = {
   ],
 };
 
+// Mock universities for batch selector
+const mockUniversities = [
+  { id: 'uni-1', name: 'Harvard University', country: 'USA' },
+  { id: 'uni-2', name: 'MIT', country: 'USA' },
+  { id: 'uni-3', name: 'Stanford University', country: 'USA' },
+  { id: 'uni-4', name: 'Yale University', country: 'USA' },
+  { id: 'uni-5', name: 'Princeton University', country: 'USA' },
+  { id: 'uni-6', name: 'Columbia University', country: 'USA' },
+];
+
 const StudentDetail: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('profile');
   const [isSubmitDialogOpen, setIsSubmitDialogOpen] = useState(false);
   const [selectedApp, setSelectedApp] = useState<string | null>(null);
+  const [isAddAppDialogOpen, setIsAddAppDialogOpen] = useState(false);
+  const [selectedBatch1, setSelectedBatch1] = useState<string[]>(['uni-1', 'uni-2']);
+  const [selectedBatch2, setSelectedBatch2] = useState<string[]>(['uni-3']);
 
   const student = mockStudentDetail;
   const documents = mockDocuments;
 
+  // Passport validation
+  const passportValidation = usePassportValidation(student.passportExpiry, 6);
+
   const handleSubmitApplication = (appId: string) => {
+    // Check passport validity before allowing submission
+    if (!passportValidation.isValid) {
+      return; // Block submission - warning will be shown
+    }
     setSelectedApp(appId);
     setIsSubmitDialogOpen(true);
   };
@@ -124,39 +148,48 @@ const StudentDetail: React.FC = () => {
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="rounded-xl border border-border bg-card p-6"
+              className="space-y-6"
             >
-              <h2 className="text-lg font-semibold text-foreground mb-6">Personal Information</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-1">
-                  <label className="text-sm text-muted-foreground">Full Name</label>
-                  <p className="font-medium text-foreground">{student.name}</p>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-sm text-muted-foreground">Email</label>
-                  <p className="font-medium text-foreground">{student.email}</p>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-sm text-muted-foreground">Phone</label>
-                  <p className="font-medium text-foreground">{student.phone}</p>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-sm text-muted-foreground">Nationality</label>
-                  <p className="font-medium text-foreground flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-muted-foreground" />
-                    {student.nationality}
-                  </p>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-sm text-muted-foreground">Date of Birth</label>
-                  <p className="font-medium text-foreground flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-muted-foreground" />
-                    {student.dateOfBirth.toLocaleDateString()}
-                  </p>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-sm text-muted-foreground">Passport Number</label>
-                  <p className="font-medium text-foreground font-mono">{student.passportNumber}</p>
+              {/* Passport Expiry Warning */}
+              <PassportExpiryWarning 
+                expiryDate={student.passportExpiry} 
+                minimumMonths={6}
+                showAsBlock
+              />
+
+              <div className="rounded-xl border border-border bg-card p-6">
+                <h2 className="text-lg font-semibold text-foreground mb-6">Personal Information</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-1">
+                    <label className="text-sm text-muted-foreground">Full Name</label>
+                    <p className="font-medium text-foreground">{student.name}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-sm text-muted-foreground">Email</label>
+                    <p className="font-medium text-foreground">{student.email}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-sm text-muted-foreground">Phone</label>
+                    <p className="font-medium text-foreground">{student.phone}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-sm text-muted-foreground">Nationality</label>
+                    <p className="font-medium text-foreground flex items-center gap-2">
+                      <MapPin className="w-4 h-4 text-muted-foreground" />
+                      {student.nationality}
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-sm text-muted-foreground">Date of Birth</label>
+                    <p className="font-medium text-foreground flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-muted-foreground" />
+                      {student.dateOfBirth.toLocaleDateString()}
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-sm text-muted-foreground">Passport Number</label>
+                    <p className="font-medium text-foreground font-mono">{student.passportNumber}</p>
+                  </div>
                 </div>
               </div>
             </motion.div>
