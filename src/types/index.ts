@@ -388,6 +388,22 @@ export interface FixRequest {
   processedBy?: string;
 }
 
+// Unlock Request (from staff/student to admin)
+export interface UnlockRequest {
+  id: string;
+  studentId: string;
+  studentName: string;
+  requestedBy: string;
+  requestedByRole: 'staff' | 'student';
+  requestedFields: string[];
+  reason: string;
+  status: 'pending' | 'approved' | 'rejected';
+  createdAt: Date;
+  processedAt?: Date;
+  processedBy?: string;
+  adminNotes?: string;
+}
+
 // Pricing Configuration (admin configurable)
 export interface PricingConfig {
   id: string;

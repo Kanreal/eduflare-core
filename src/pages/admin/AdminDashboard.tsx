@@ -11,22 +11,47 @@ import {
   GraduationCap,
   FileText,
   BarChart3,
+  Unlock,
 } from 'lucide-react';
 import { PortalLayout } from '@/components/layout/PortalLayout';
 import { KPICard, StatusBadge, Avatar } from '@/components/ui/EduFlareUI';
 import { mockKPIData, mockAdmin } from '@/lib/constants';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
+import { useEduFlare } from '@/contexts/EduFlareContext';
+import { AdminUnlockReview } from '@/components/UnlockRequestFlow';
+import { useAuth } from '@/contexts/AuthContext';
 
 const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { 
+    getPendingUnlockRequests, 
+    processUnlockRequest, 
+    unlockRequests,
+    applications,
+    students 
+  } = useEduFlare();
 
-  // Mock pending applications
-  const pendingApplications = [
-    { id: 'app-1', studentName: 'John Doe', university: 'Harvard University', priority: 'high', daysWaiting: 2 },
-    { id: 'app-2', studentName: 'Sarah Miller', university: 'MIT', priority: 'medium', daysWaiting: 5 },
-    { id: 'app-3', studentName: 'Michael Chen', university: 'Stanford', priority: 'low', daysWaiting: 1 },
-  ];
+  const pendingUnlockRequests = getPendingUnlockRequests();
+
+  // Get pending applications from context
+  const pendingApplications = applications
+    .filter(app => app.status === 'pending_admin')
+    .slice(0, 3)
+    .map(app => {
+      const student = students.find(s => s.id === app.studentId);
+      const daysWaiting = app.submittedToAdminAt 
+        ? Math.floor((Date.now() - new Date(app.submittedToAdminAt).getTime()) / (1000 * 60 * 60 * 24))
+        : 0;
+      return {
+        id: app.id,
+        studentName: student?.name || 'Unknown',
+        university: app.universityName,
+        priority: daysWaiting > 3 ? 'high' : daysWaiting > 1 ? 'medium' : 'low',
+        daysWaiting,
+      };
+    });
 
   // Mock pending refunds
   const pendingRefunds = [
@@ -46,6 +71,14 @@ const AdminDashboard: React.FC = () => {
 
   const maxRevenue = Math.max(...monthlyData.map(d => d.revenue));
 
+  const handleApproveUnlock = (requestId: string, adminNotes?: string) => {
+    processUnlockRequest(requestId, true, user?.id || 'admin', adminNotes);
+  };
+
+  const handleRejectUnlock = (requestId: string, adminNotes?: string) => {
+    processUnlockRequest(requestId, false, user?.id || 'admin', adminNotes);
+  };
+
   return (
     <PortalLayout portal="admin">
       <div className="space-y-6">
@@ -64,6 +97,15 @@ const AdminDashboard: React.FC = () => {
             </Button>
           </div>
         </div>
+
+        {/* Pending Unlock Requests - Priority Section */}
+        {pendingUnlockRequests.length > 0 && (
+          <AdminUnlockReview
+            requests={unlockRequests}
+            onApprove={handleApproveUnlock}
+            onReject={handleRejectUnlock}
+          />
+        )}
 
         {/* KPI Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -88,7 +130,7 @@ const AdminDashboard: React.FC = () => {
           />
           <KPICard
             title="Pending Applications"
-            value={mockKPIData.pendingApplications.toString()}
+            value={applications.filter(a => a.status === 'pending_admin').length.toString()}
             icon={Clock}
             subtitle="Requires review"
           />
@@ -170,10 +212,10 @@ const AdminDashboard: React.FC = () => {
               </div>
               <div className="flex items-center justify-between p-3 rounded-lg bg-primary/10">
                 <div className="flex items-center gap-3">
-                  <GraduationCap className="w-5 h-5 text-primary" />
-                  <span className="text-sm text-foreground">New Enrollments</span>
+                  <Unlock className="w-5 h-5 text-primary" />
+                  <span className="text-sm text-foreground">Unlock Requests</span>
                 </div>
-                <span className="font-bold text-primary">12</span>
+                <span className="font-bold text-primary">{pendingUnlockRequests.length}</span>
               </div>
             </div>
           </motion.div>
@@ -198,27 +240,34 @@ const AdminDashboard: React.FC = () => {
               </Button>
             </div>
             <div className="space-y-3">
-              {pendingApplications.map((app) => (
-                <div
-                  key={app.id}
-                  className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors cursor-pointer"
-                  onClick={() => navigate(`/admin/applications/${app.id}`)}
-                >
-                  <Avatar name={app.studentName} size="sm" />
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-foreground">{app.studentName}</p>
-                    <p className="text-xs text-muted-foreground">{app.university}</p>
+              {pendingApplications.length > 0 ? (
+                pendingApplications.map((app) => (
+                  <div
+                    key={app.id}
+                    className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors cursor-pointer"
+                    onClick={() => navigate(`/admin/applications/${app.id}`)}
+                  >
+                    <Avatar name={app.studentName} size="sm" />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-foreground">{app.studentName}</p>
+                      <p className="text-xs text-muted-foreground">{app.university}</p>
+                    </div>
+                    <div className="text-right">
+                      <StatusBadge 
+                        variant={app.priority === 'high' ? 'error' : app.priority === 'medium' ? 'warning' : 'muted'}
+                      >
+                        {app.priority}
+                      </StatusBadge>
+                      <p className="text-xs text-muted-foreground mt-1">{app.daysWaiting}d waiting</p>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <StatusBadge 
-                      variant={app.priority === 'high' ? 'error' : app.priority === 'medium' ? 'warning' : 'muted'}
-                    >
-                      {app.priority}
-                    </StatusBadge>
-                    <p className="text-xs text-muted-foreground mt-1">{app.daysWaiting}d waiting</p>
-                  </div>
+                ))
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <CheckCircle className="w-8 h-8 mx-auto mb-2 text-success" />
+                  <p>No pending applications</p>
                 </div>
-              ))}
+              )}
             </div>
           </motion.div>
 

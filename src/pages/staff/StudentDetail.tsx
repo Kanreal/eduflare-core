@@ -18,11 +18,14 @@ import {
   Eye,
   Plus,
   Shield,
+  Edit,
 } from 'lucide-react';
 import { PortalLayout } from '@/components/layout/PortalLayout';
 import { StatusBadge, Avatar, DocumentCard, ProgressStepper } from '@/components/ui/EduFlareUI';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Dialog,
   DialogContent,
@@ -35,63 +38,143 @@ import { applicationSteps, mockDocuments } from '@/lib/constants';
 import { PassportExpiryWarning, usePassportValidation } from '@/components/PassportExpiryWarning';
 import { BatchSelector } from '@/components/BatchSelector';
 import { StudentImpersonationButton } from '@/components/AdminImpersonation';
+import { StaffUnlockRequestButton, LockIndicator } from '@/components/UnlockRequestFlow';
 import { useAuth } from '@/contexts/AuthContext';
-
-// Mock student detail with passport expiry
-const mockStudentDetail = {
-  id: 'std-1',
-  name: 'John Doe',
-  email: 'john.doe@email.com',
-  phone: '+1 234 567 890',
-  nationality: 'United States',
-  dateOfBirth: new Date('2000-05-15'),
-  passportNumber: 'AB1234567',
-  passportExpiry: new Date('2025-08-15'), // 8 months from now - valid
-  currentStep: 3,
-  status: 'documents_pending',
-  applications: [
-    { id: 'app-1', university: 'Harvard University', program: 'Computer Science', status: 'pending', priority: 1, isLocked: false },
-    { id: 'app-2', university: 'MIT', program: 'Engineering', status: 'pending', priority: 2, isLocked: false },
-    { id: 'app-3', university: 'Stanford University', program: 'Data Science', status: 'draft', priority: 3, isLocked: true },
-  ],
-};
-
-// Mock universities for batch selector
-const mockUniversities = [
-  { id: 'uni-1', name: 'Harvard University', country: 'USA' },
-  { id: 'uni-2', name: 'MIT', country: 'USA' },
-  { id: 'uni-3', name: 'Stanford University', country: 'USA' },
-  { id: 'uni-4', name: 'Yale University', country: 'USA' },
-  { id: 'uni-5', name: 'Princeton University', country: 'USA' },
-  { id: 'uni-6', name: 'Columbia University', country: 'USA' },
-];
+import { useEduFlare } from '@/contexts/EduFlareContext';
 
 const StudentDetail: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { role } = useAuth();
+  const { role, user } = useAuth();
+  const { students, getStudentById, getDocumentsByStudent, submitUnlockRequest, updateStudent, logAudit } = useEduFlare();
+  
   const [activeTab, setActiveTab] = useState('profile');
   const [isSubmitDialogOpen, setIsSubmitDialogOpen] = useState(false);
   const [selectedApp, setSelectedApp] = useState<string | null>(null);
-  const [isAddAppDialogOpen, setIsAddAppDialogOpen] = useState(false);
-  const [selectedBatch1, setSelectedBatch1] = useState<string[]>(['uni-1', 'uni-2']);
-  const [selectedBatch2, setSelectedBatch2] = useState<string[]>(['uni-3']);
-
-  const student = mockStudentDetail;
-  const documents = mockDocuments;
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedStudent, setEditedStudent] = useState<Record<string, any>>({});
+  
+  // Get student from context or fallback to mock
+  const student = id ? getStudentById(id) : undefined;
+  const documents = id ? getDocumentsByStudent(id) : mockDocuments;
   
   const isAdmin = role === 'admin';
+  const isLocked = student?.isProfileLocked || false;
+  const unlockedFields = student?.unlockedFields || [];
+
+  // Mock applications for display (would come from context in real implementation)
+  const mockApplications = [
+    { id: 'app-1', university: 'Harvard University', program: 'Computer Science', status: 'pending', priority: 1, isLocked: false },
+    { id: 'app-2', university: 'MIT', program: 'Engineering', status: 'pending', priority: 2, isLocked: false },
+    { id: 'app-3', university: 'Stanford University', program: 'Data Science', status: 'draft', priority: 3, isLocked: true },
+  ];
+
+  // Fallback student data
+  const studentData = student || {
+    id: id || 'std-1',
+    name: 'John Doe',
+    email: 'john.doe@email.com',
+    phone: '+1 234 567 890',
+    nationality: 'United States',
+    dateOfBirth: new Date('2000-05-15'),
+    passportNumber: 'AB1234567',
+    passportExpiry: new Date('2025-08-15'),
+    currentStep: 3,
+    status: 'documents_pending',
+    isProfileLocked: false,
+    unlockedFields: [],
+  };
 
   // Passport validation
-  const passportValidation = usePassportValidation(student.passportExpiry, 6);
+  const passportValidation = usePassportValidation(
+    studentData.passportExpiry instanceof Date ? studentData.passportExpiry : new Date(studentData.passportExpiry || Date.now()), 
+    6
+  );
 
   const handleSubmitApplication = (appId: string) => {
-    // Check passport validity before allowing submission
     if (!passportValidation.isValid) {
-      return; // Block submission - warning will be shown
+      return;
     }
     setSelectedApp(appId);
     setIsSubmitDialogOpen(true);
+  };
+
+  const handleUnlockRequest = (fields: string[], reason: string) => {
+    if (student && user) {
+      submitUnlockRequest(student.id, student.name, user.id, 'staff', fields, reason);
+    }
+  };
+
+  const isFieldEditable = (fieldName: string): boolean => {
+    if (!isLocked) return true;
+    return unlockedFields.includes(fieldName);
+  };
+
+  const handleStartEdit = () => {
+    if (isLocked && unlockedFields.length === 0) return;
+    setEditedStudent({
+      name: studentData.name,
+      email: studentData.email,
+      phone: studentData.phone,
+      nationality: studentData.nationality,
+      passportNumber: studentData.passportNumber,
+    });
+    setIsEditing(true);
+  };
+
+  const handleSaveEdit = () => {
+    if (student) {
+      // Only save unlocked fields if profile is locked
+      const updates: Record<string, any> = {};
+      Object.entries(editedStudent).forEach(([key, value]) => {
+        if (isFieldEditable(key)) {
+          updates[key] = value;
+        }
+      });
+      
+      updateStudent(student.id, updates);
+      logAudit({
+        userId: user?.id || 'unknown',
+        userName: user?.name || 'Unknown',
+        userRole: role as any,
+        action: 'student_profile_updated',
+        details: `Updated fields: ${Object.keys(updates).join(', ')}`,
+        entityType: 'student',
+        entityId: student.id,
+        isOverride: false,
+      });
+    }
+    setIsEditing(false);
+  };
+
+  const renderFieldWithLock = (label: string, value: string, fieldName: string) => {
+    const editable = isFieldEditable(fieldName);
+    
+    if (isEditing && editable) {
+      return (
+        <div className="space-y-1">
+          <Label className="text-sm text-muted-foreground">{label}</Label>
+          <Input
+            value={editedStudent[fieldName] || ''}
+            onChange={(e) => setEditedStudent(prev => ({ ...prev, [fieldName]: e.target.value }))}
+            className="h-9"
+          />
+        </div>
+      );
+    }
+    
+    return (
+      <div className="space-y-1">
+        <label className="text-sm text-muted-foreground flex items-center gap-1">
+          {label}
+          {isLocked && !editable && <Lock className="w-3 h-3 text-warning" />}
+          {isLocked && editable && <CheckCircle className="w-3 h-3 text-success" />}
+        </label>
+        <p className={`font-medium ${isLocked && !editable ? 'text-muted-foreground' : 'text-foreground'}`}>
+          {value}
+        </p>
+      </div>
+    );
   };
 
   return (
@@ -106,11 +189,17 @@ const StudentDetail: React.FC = () => {
         {/* Header */}
         <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
           <div className="flex items-start gap-4">
-            <Avatar name={student.name} size="lg" />
+            <Avatar name={studentData.name} size="lg" />
             <div>
               <div className="flex items-center gap-3">
-                <h1 className="text-2xl font-bold text-foreground">{student.name}</h1>
-                {isAdmin && (
+                <h1 className="text-2xl font-bold text-foreground">{studentData.name}</h1>
+                {isLocked && (
+                  <StatusBadge variant="warning" className="gap-1">
+                    <Lock className="w-3 h-3" />
+                    Locked
+                  </StatusBadge>
+                )}
+                {isAdmin && student && (
                   <StudentImpersonationButton 
                     student={{ 
                       id: student.id, 
@@ -123,24 +212,45 @@ const StudentDetail: React.FC = () => {
               <div className="flex flex-wrap items-center gap-3 mt-2 text-sm text-muted-foreground">
                 <span className="flex items-center gap-1">
                   <Mail className="w-4 h-4" />
-                  {student.email}
+                  {studentData.email}
                 </span>
                 <span className="flex items-center gap-1">
                   <Phone className="w-4 h-4" />
-                  {student.phone}
+                  {studentData.phone}
                 </span>
               </div>
-              <div className="mt-3">
+              <div className="mt-3 flex items-center gap-2">
                 <StatusBadge variant="warning">Documents Pending</StatusBadge>
               </div>
             </div>
           </div>
 
-          {/* Progress */}
-          <div className="lg:max-w-md w-full">
-            <ProgressStepper steps={applicationSteps} currentStep={student.currentStep} />
+          {/* Actions */}
+          <div className="flex items-center gap-2">
+            {isLocked && (
+              <StaffUnlockRequestButton
+                studentId={studentData.id}
+                studentName={studentData.name}
+                isLocked={isLocked}
+                onRequestSubmit={handleUnlockRequest}
+              />
+            )}
           </div>
         </div>
+
+        {/* Progress */}
+        <div className="max-w-2xl">
+          <ProgressStepper steps={applicationSteps} currentStep={studentData.currentStep} />
+        </div>
+
+        {/* Lock Indicator */}
+        {isLocked && (
+          <LockIndicator 
+            isLocked={isLocked} 
+            lockedAt={student?.lockedAt} 
+            unlockedFields={unlockedFields}
+          />
+        )}
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
@@ -168,44 +278,52 @@ const StudentDetail: React.FC = () => {
             >
               {/* Passport Expiry Warning */}
               <PassportExpiryWarning 
-                expiryDate={student.passportExpiry} 
+                expiryDate={studentData.passportExpiry instanceof Date ? studentData.passportExpiry : new Date(studentData.passportExpiry || Date.now())} 
                 minimumMonths={6}
                 showAsBlock
               />
 
               <div className="rounded-xl border border-border bg-card p-6">
-                <h2 className="text-lg font-semibold text-foreground mb-6">Personal Information</h2>
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-lg font-semibold text-foreground">Personal Information</h2>
+                  {!isEditing && (!isLocked || unlockedFields.length > 0) && (
+                    <Button variant="outline" size="sm" onClick={handleStartEdit} className="gap-2">
+                      <Edit className="w-4 h-4" />
+                      {isLocked ? 'Edit Unlocked Fields' : 'Edit'}
+                    </Button>
+                  )}
+                  {isEditing && (
+                    <div className="flex items-center gap-2">
+                      <Button variant="outline" size="sm" onClick={() => setIsEditing(false)}>
+                        Cancel
+                      </Button>
+                      <Button size="sm" onClick={handleSaveEdit}>
+                        Save Changes
+                      </Button>
+                    </div>
+                  )}
+                </div>
+                
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {renderFieldWithLock('Full Name', studentData.name, 'name')}
+                  {renderFieldWithLock('Email', studentData.email, 'email')}
+                  {renderFieldWithLock('Phone', studentData.phone || '', 'phone')}
+                  {renderFieldWithLock('Nationality', studentData.nationality || '', 'nationality')}
+                  
                   <div className="space-y-1">
-                    <label className="text-sm text-muted-foreground">Full Name</label>
-                    <p className="font-medium text-foreground">{student.name}</p>
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-sm text-muted-foreground">Email</label>
-                    <p className="font-medium text-foreground">{student.email}</p>
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-sm text-muted-foreground">Phone</label>
-                    <p className="font-medium text-foreground">{student.phone}</p>
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-sm text-muted-foreground">Nationality</label>
-                    <p className="font-medium text-foreground flex items-center gap-2">
-                      <MapPin className="w-4 h-4 text-muted-foreground" />
-                      {student.nationality}
-                    </p>
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-sm text-muted-foreground">Date of Birth</label>
+                    <label className="text-sm text-muted-foreground flex items-center gap-2">
+                      Date of Birth
+                      {isLocked && <Lock className="w-3 h-3 text-warning" />}
+                    </label>
                     <p className="font-medium text-foreground flex items-center gap-2">
                       <Calendar className="w-4 h-4 text-muted-foreground" />
-                      {student.dateOfBirth.toLocaleDateString()}
+                      {studentData.dateOfBirth instanceof Date 
+                        ? studentData.dateOfBirth.toLocaleDateString() 
+                        : new Date(studentData.dateOfBirth || Date.now()).toLocaleDateString()}
                     </p>
                   </div>
-                  <div className="space-y-1">
-                    <label className="text-sm text-muted-foreground">Passport Number</label>
-                    <p className="font-medium text-foreground font-mono">{student.passportNumber}</p>
-                  </div>
+                  
+                  {renderFieldWithLock('Passport Number', studentData.passportNumber || '', 'passportNumber')}
                 </div>
               </div>
             </motion.div>
@@ -220,10 +338,18 @@ const StudentDetail: React.FC = () => {
             >
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-semibold text-foreground">Student Documents</h2>
-                <Button className="gap-2">
-                  <Upload className="w-4 h-4" />
-                  Upload Document
-                </Button>
+                {!isLocked && (
+                  <Button className="gap-2">
+                    <Upload className="w-4 h-4" />
+                    Upload Document
+                  </Button>
+                )}
+                {isLocked && (
+                  <StatusBadge variant="warning" className="gap-1">
+                    <Lock className="w-3 h-3" />
+                    Documents Locked
+                  </StatusBadge>
+                )}
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -232,7 +358,7 @@ const StudentDetail: React.FC = () => {
                     key={doc.id}
                     name={doc.name}
                     type={doc.type}
-                    status={doc.status}
+                    status={isLocked ? 'locked' : doc.status}
                     uploadedAt={doc.uploadedAt}
                     onView={() => {}}
                     onDownload={doc.status === 'verified' ? () => {} : undefined}
@@ -251,18 +377,20 @@ const StudentDetail: React.FC = () => {
             >
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-semibold text-foreground">University Applications</h2>
-                <Button variant="outline" className="gap-2">
-                  <Plus className="w-4 h-4" />
-                  Add Application
-                </Button>
+                {!isLocked && (
+                  <Button variant="outline" className="gap-2">
+                    <Plus className="w-4 h-4" />
+                    Add Application
+                  </Button>
+                )}
               </div>
 
               <div className="space-y-4">
-                {student.applications.map((app, index) => (
+                {mockApplications.map((app, index) => (
                   <div
                     key={app.id}
                     className={`rounded-xl border bg-card p-5 ${
-                      app.isLocked ? 'border-muted opacity-75' : 'border-border'
+                      app.isLocked || isLocked ? 'border-muted opacity-75' : 'border-border'
                     }`}
                   >
                     <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
@@ -273,7 +401,7 @@ const StudentDetail: React.FC = () => {
                         <div>
                           <h3 className="font-semibold text-foreground flex items-center gap-2">
                             {app.university}
-                            {app.isLocked && <Lock className="w-4 h-4 text-muted-foreground" />}
+                            {(app.isLocked || isLocked) && <Lock className="w-4 h-4 text-muted-foreground" />}
                           </h3>
                           <p className="text-sm text-muted-foreground">{app.program}</p>
                           <div className="mt-2">
@@ -289,7 +417,7 @@ const StudentDetail: React.FC = () => {
                           <Eye className="w-4 h-4" />
                           View
                         </Button>
-                        {!app.isLocked && app.status === 'pending' && (
+                        {!app.isLocked && !isLocked && app.status === 'pending' && (
                           <Button 
                             size="sm" 
                             className="gap-1"

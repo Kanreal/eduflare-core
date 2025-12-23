@@ -3,7 +3,7 @@ import {
   Lead, Student, Staff, Admin, Document, Contract, Invoice,
   UniversityApplication, University, Commission, RefundRequest,
   Appointment, Notification, AuditLog, LedgerEntry, FixRequest,
-  SystemSettings, LeadStatus, StudentStatus, UserRole,
+  UnlockRequest, SystemSettings, LeadStatus, StudentStatus, UserRole,
   LEAD_TRANSITIONS, STUDENT_TRANSITIONS, SCHOLARSHIP_PRICING,
   DEFAULT_SYSTEM_SETTINGS, ScholarshipType
 } from '@/types';
@@ -26,6 +26,7 @@ interface EduFlareState {
   auditLogs: AuditLog[];
   ledgerEntries: LedgerEntry[];
   fixRequests: FixRequest[];
+  unlockRequests: UnlockRequest[];
   systemSettings: SystemSettings;
 }
 
@@ -89,6 +90,11 @@ interface EduFlareContextType extends EduFlareState {
   submitFixRequest: (request: Omit<FixRequest, 'id' | 'createdAt' | 'status'>) => void;
   processFixRequest: (id: string, approved: boolean, processedBy: string) => void;
   
+  // Unlock request operations
+  submitUnlockRequest: (studentId: string, studentName: string, requestedBy: string, requestedByRole: 'staff' | 'student', fields: string[], reason: string) => void;
+  processUnlockRequest: (id: string, approved: boolean, processedBy: string, adminNotes?: string) => void;
+  getPendingUnlockRequests: () => UnlockRequest[];
+  
   // Audit logging
   logAudit: (entry: Omit<AuditLog, 'id' | 'timestamp'>) => void;
   
@@ -139,6 +145,7 @@ export const EduFlareProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>(mockData.auditLogs);
   const [ledgerEntries, setLedgerEntries] = useState<LedgerEntry[]>([]);
   const [fixRequests, setFixRequests] = useState<FixRequest[]>([]);
+  const [unlockRequests, setUnlockRequests] = useState<UnlockRequest[]>([]);
   const [systemSettings, setSystemSettings] = useState<SystemSettings>(DEFAULT_SYSTEM_SETTINGS);
 
   // Audit logging
@@ -719,6 +726,71 @@ export const EduFlareProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   }, [fixRequests, updateStudent]);
 
+  // Unlock request operations
+  const submitUnlockRequest = useCallback((
+    studentId: string, 
+    studentName: string, 
+    requestedBy: string, 
+    requestedByRole: 'staff' | 'student', 
+    fields: string[], 
+    reason: string
+  ) => {
+    const newRequest: UnlockRequest = {
+      id: generateId(),
+      studentId,
+      studentName,
+      requestedBy,
+      requestedByRole,
+      requestedFields: fields,
+      reason,
+      status: 'pending',
+      createdAt: new Date(),
+    };
+    setUnlockRequests(prev => [...prev, newRequest]);
+    
+    logAudit({
+      userId: requestedBy,
+      userName: requestedByRole,
+      userRole: requestedByRole,
+      action: 'unlock_request_submitted',
+      details: `Requested unlock for fields: ${fields.join(', ')}. Reason: ${reason}`,
+      entityType: 'student',
+      entityId: studentId,
+      isOverride: false,
+    });
+  }, [logAudit]);
+
+  const processUnlockRequest = useCallback((id: string, approved: boolean, processedBy: string, adminNotes?: string) => {
+    const request = unlockRequests.find(r => r.id === id);
+    if (!request) return;
+    
+    setUnlockRequests(prev => prev.map(r => 
+      r.id === id 
+        ? { ...r, status: approved ? 'approved' : 'rejected', processedAt: new Date(), processedBy, adminNotes }
+        : r
+    ));
+    
+    if (approved) {
+      // Unlock the requested fields
+      unlockStudentFields(request.studentId, request.requestedFields);
+    }
+    
+    logAudit({
+      userId: processedBy,
+      userName: 'Admin',
+      userRole: 'admin',
+      action: approved ? 'unlock_request_approved' : 'unlock_request_rejected',
+      details: `${approved ? 'Approved' : 'Rejected'} unlock for fields: ${request.requestedFields.join(', ')}${adminNotes ? `. Notes: ${adminNotes}` : ''}`,
+      entityType: 'student',
+      entityId: request.studentId,
+      isOverride: false,
+    });
+  }, [unlockRequests, unlockStudentFields, logAudit]);
+
+  const getPendingUnlockRequests = useCallback(() => {
+    return unlockRequests.filter(r => r.status === 'pending');
+  }, [unlockRequests]);
+
   // Settings
   const updateSystemSettings = useCallback((updates: Partial<SystemSettings>) => {
     setSystemSettings(prev => ({ ...prev, ...updates }));
@@ -762,7 +834,7 @@ export const EduFlareProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const value: EduFlareContextType = {
     leads, students, staff, admins, documents, contracts, invoices,
     applications, universities, commissions, refundRequests, appointments,
-    notifications, auditLogs, ledgerEntries, fixRequests, systemSettings,
+    notifications, auditLogs, ledgerEntries, fixRequests, unlockRequests, systemSettings,
     addLead, updateLead, changeLeadStatus, convertLeadToStudent,
     updateStudent, changeStudentStatus, lockStudentProfile, unlockStudentProfile,
     unlockStudentFields, setScholarshipType, calculateFinalBalance,
@@ -775,6 +847,7 @@ export const EduFlareProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     bookAppointment, cancelAppointment,
     addNotification, markNotificationRead, markAllNotificationsRead,
     submitFixRequest, processFixRequest,
+    submitUnlockRequest, processUnlockRequest, getPendingUnlockRequests,
     logAudit, updateSystemSettings,
     getStudentById, getLeadById, getStaffById, getDocumentsByStudent,
     getApplicationsByStudent, getNotificationsByUser, getUnreadNotificationCount,
