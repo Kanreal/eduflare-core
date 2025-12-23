@@ -1,24 +1,25 @@
 import React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
-import { type LucideIcon } from 'lucide-react';
+import { type LucideIcon, TrendingUp, TrendingDown } from 'lucide-react';
 
 // ============================================
 // STATUS BADGE COMPONENT
 // ============================================
 const badgeVariants = cva(
-  'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors',
+  'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors border',
   {
     variants: {
       variant: {
-        default: 'bg-secondary text-secondary-foreground',
-        primary: 'bg-primary/12 text-primary',
-        success: 'bg-success/12 text-success',
-        warning: 'bg-warning/12 text-warning-foreground',
-        error: 'bg-error/12 text-error',
-        gold: 'bg-gold/12 text-gold',
-        muted: 'bg-muted text-muted-foreground',
-        outline: 'border border-border bg-transparent text-foreground',
+        default: 'bg-secondary text-secondary-foreground border-border',
+        primary: 'bg-primary/10 text-primary border-primary/20',
+        success: 'bg-success/10 text-success border-success/20',
+        warning: 'bg-warning/10 text-warning-foreground border-warning/20',
+        error: 'bg-error/10 text-error border-error/20',
+        gold: 'bg-gold/10 text-gold border-gold/20',
+        muted: 'bg-muted text-muted-foreground border-border',
+        outline: 'border-border bg-transparent text-foreground',
+        info: 'bg-info/10 text-info border-info/20',
       },
       size: {
         sm: 'px-2 py-0.5 text-[10px]',
@@ -67,7 +68,7 @@ export interface KPICardProps {
     value: number;
     isPositive: boolean;
   };
-  variant?: 'default' | 'primary' | 'gold';
+  variant?: 'default' | 'primary' | 'gold' | 'success';
   className?: string;
 }
 
@@ -84,36 +85,51 @@ export const KPICard: React.FC<KPICardProps> = ({
     default: 'bg-card',
     primary: 'gradient-primary text-primary-foreground',
     gold: 'gradient-gold text-gold-foreground',
+    success: 'gradient-success text-success-foreground',
   };
 
   const textStyles = {
     default: 'text-foreground',
     primary: 'text-primary-foreground',
     gold: 'text-gold-foreground',
+    success: 'text-success-foreground',
   };
 
   const mutedStyles = {
     default: 'text-muted-foreground',
     primary: 'text-primary-foreground/70',
     gold: 'text-gold-foreground/70',
+    success: 'text-success-foreground/70',
+  };
+
+  const iconBgStyles = {
+    default: 'bg-primary/10',
+    primary: 'bg-white/20',
+    gold: 'bg-white/20',
+    success: 'bg-white/20',
   };
 
   return (
     <div
       className={cn(
-        'rounded-xl border border-border p-6 shadow-card transition-all hover:shadow-elevated',
+        'rounded-xl border border-border p-6 shadow-card transition-all duration-200 hover:shadow-elevated hover:-translate-y-0.5 relative overflow-hidden group',
         bgStyles[variant],
         className
       )}
     >
-      <div className="flex items-start justify-between">
+      {/* Subtle gradient overlay on hover for default variant */}
+      {variant === 'default' && (
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.02] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+      )}
+      
+      <div className="flex items-start justify-between relative">
         <div>
           <p className={cn('text-sm font-medium', mutedStyles[variant])}>
             {title}
           </p>
           <p
             className={cn(
-              'mt-2 text-3xl font-bold tracking-tight tabular-nums',
+              'mt-2 text-3xl font-bold tracking-tight tabular-nums font-display',
               textStyles[variant]
             )}
           >
@@ -123,10 +139,15 @@ export const KPICard: React.FC<KPICardProps> = ({
             <p className={cn('mt-1 text-sm', mutedStyles[variant])}>{subtitle}</p>
           )}
           {trend && (
-            <div className="mt-2 flex items-center gap-1">
+            <div className="mt-3 flex items-center gap-1.5">
+              {trend.isPositive ? (
+                <TrendingUp className="w-4 h-4 text-success" />
+              ) : (
+                <TrendingDown className="w-4 h-4 text-error" />
+              )}
               <span
                 className={cn(
-                  'text-sm font-medium',
+                  'text-sm font-semibold',
                   trend.isPositive ? 'text-success' : 'text-error'
                 )}
               >
@@ -139,8 +160,8 @@ export const KPICard: React.FC<KPICardProps> = ({
         {Icon && (
           <div
             className={cn(
-              'rounded-lg p-3',
-              variant === 'default' ? 'bg-primary/10' : 'bg-white/20'
+              'rounded-xl p-3 transition-transform duration-200 group-hover:scale-110',
+              iconBgStyles[variant]
             )}
           >
             <Icon
@@ -189,8 +210,8 @@ export const ProgressStepper: React.FC<ProgressStepperProps> = ({
               <div className="flex flex-col items-center">
                 <div
                   className={cn(
-                    'flex h-10 w-10 items-center justify-center rounded-full border-2 text-sm font-semibold transition-all',
-                    isCompleted && 'border-primary bg-primary text-primary-foreground',
+                    'flex h-10 w-10 items-center justify-center rounded-full border-2 text-sm font-semibold transition-all duration-300',
+                    isCompleted && 'border-success bg-success text-success-foreground',
                     isActive && 'border-primary bg-primary/10 text-primary shadow-glow-primary',
                     isPending && 'border-border bg-muted text-muted-foreground'
                   )}
@@ -213,10 +234,10 @@ export const ProgressStepper: React.FC<ProgressStepperProps> = ({
                     step.step
                   )}
                 </div>
-                <div className="mt-2 text-center">
+                <div className="mt-3 text-center">
                   <p
                     className={cn(
-                      'text-sm font-medium',
+                      'text-sm font-medium transition-colors',
                       (isCompleted || isActive) && 'text-foreground',
                       isPending && 'text-muted-foreground'
                     )}
@@ -224,7 +245,7 @@ export const ProgressStepper: React.FC<ProgressStepperProps> = ({
                     {step.label}
                   </p>
                   {step.description && (
-                    <p className="text-xs text-muted-foreground mt-0.5">
+                    <p className="text-xs text-muted-foreground mt-0.5 max-w-24">
                       {step.description}
                     </p>
                   )}
@@ -233,8 +254,8 @@ export const ProgressStepper: React.FC<ProgressStepperProps> = ({
               {index < steps.length - 1 && (
                 <div
                   className={cn(
-                    'h-0.5 flex-1 mx-2 mt-[-2rem]',
-                    step.step < currentStep ? 'bg-primary' : 'bg-border'
+                    'h-0.5 flex-1 mx-3 mt-[-2.5rem] rounded-full transition-colors duration-300',
+                    step.step < currentStep ? 'bg-success' : 'bg-border'
                   )}
                 />
               )}
@@ -276,19 +297,19 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({
   const statusLabels = {
     pending: 'Pending Review',
     verified: 'Verified',
-    error: 'Error - Action Required',
+    error: 'Action Required',
     locked: 'Locked',
   };
 
   return (
     <div
       className={cn(
-        'relative rounded-xl border border-border bg-card p-4 shadow-card transition-all',
+        'relative rounded-xl border border-border bg-card p-4 shadow-card transition-all duration-200 hover:shadow-elevated group',
         status === 'locked' && 'opacity-60'
       )}
     >
       {status === 'locked' && (
-        <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-background/60 backdrop-blur-[2px]">
+        <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-background/70 backdrop-blur-[2px]">
           <div className="flex flex-col items-center gap-2 text-muted-foreground">
             <svg
               className="h-6 w-6"
@@ -308,7 +329,7 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({
         </div>
       )}
       <div className="flex items-start gap-3">
-        <div className="rounded-lg bg-primary/10 p-2.5">
+        <div className="rounded-xl bg-primary/10 p-2.5 transition-transform duration-200 group-hover:scale-105">
           <svg
             className="h-5 w-5 text-primary"
             fill="none"
@@ -343,7 +364,7 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({
           {onView && (
             <button
               onClick={onView}
-              className="flex-1 rounded-lg border border-border bg-transparent px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted"
+              className="flex-1 rounded-lg border border-border bg-transparent px-3 py-2 text-xs font-medium text-foreground transition-all hover:bg-muted hover:border-muted-foreground/20"
             >
               View
             </button>
@@ -351,7 +372,7 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({
           {onDownload && status === 'verified' && (
             <button
               onClick={onDownload}
-              className="flex-1 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+              className="flex-1 rounded-lg bg-primary px-3 py-2 text-xs font-medium text-primary-foreground transition-all hover:bg-primary/90 hover:shadow-md"
             >
               Download
             </button>
@@ -381,7 +402,7 @@ export const LockedOverlay: React.FC<LockedOverlayProps> = ({
       <div className="pointer-events-none select-none blur-sm opacity-50">
         {children}
       </div>
-      <div className="absolute inset-0 flex items-center justify-center bg-background/40 backdrop-blur-[2px] rounded-xl">
+      <div className="absolute inset-0 flex items-center justify-center bg-background/50 backdrop-blur-[3px] rounded-xl">
         <div className="text-center p-6 max-w-sm">
           <div className="mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-4">
             <svg
@@ -398,7 +419,7 @@ export const LockedOverlay: React.FC<LockedOverlayProps> = ({
               />
             </svg>
           </div>
-          <h3 className="font-semibold text-foreground">{title}</h3>
+          <h3 className="font-semibold text-foreground font-display">{title}</h3>
           <p className="text-sm text-muted-foreground mt-1">{message}</p>
         </div>
       </div>
@@ -426,20 +447,20 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   action,
 }) => {
   return (
-    <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+    <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
       {Icon && (
-        <div className="rounded-full bg-muted p-4 mb-4">
+        <div className="rounded-2xl bg-muted p-5 mb-5">
           <Icon className="h-8 w-8 text-muted-foreground" />
         </div>
       )}
-      <h3 className="font-semibold text-foreground">{title}</h3>
+      <h3 className="font-semibold text-foreground font-display text-lg">{title}</h3>
       {description && (
-        <p className="text-sm text-muted-foreground mt-1 max-w-sm">{description}</p>
+        <p className="text-sm text-muted-foreground mt-2 max-w-md">{description}</p>
       )}
       {action && (
         <button
           onClick={action.onClick}
-          className="mt-4 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+          className="mt-5 rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground transition-all hover:bg-primary/90 hover:shadow-md active:scale-[0.98]"
         >
           {action.label}
         </button>
@@ -454,7 +475,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
 export interface AvatarProps {
   name: string;
   src?: string;
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
   className?: string;
 }
 
@@ -465,9 +486,11 @@ export const Avatar: React.FC<AvatarProps> = ({
   className,
 }) => {
   const sizeClasses = {
+    xs: 'h-6 w-6 text-[10px]',
     sm: 'h-8 w-8 text-xs',
     md: 'h-10 w-10 text-sm',
     lg: 'h-12 w-12 text-base',
+    xl: 'h-16 w-16 text-lg',
   };
 
   const initials = name
@@ -477,11 +500,22 @@ export const Avatar: React.FC<AvatarProps> = ({
     .toUpperCase()
     .slice(0, 2);
 
+  // Generate consistent color based on name
+  const colors = [
+    'bg-primary/15 text-primary',
+    'bg-success/15 text-success', 
+    'bg-gold/15 text-gold',
+    'bg-error/15 text-error',
+    'bg-info/15 text-info',
+  ];
+  const colorIndex = name.length % colors.length;
+
   return (
     <div
       className={cn(
-        'rounded-full bg-primary/10 flex items-center justify-center font-medium text-primary overflow-hidden',
+        'rounded-full flex items-center justify-center font-semibold overflow-hidden ring-2 ring-background',
         sizeClasses[size],
+        src ? '' : colors[colorIndex],
         className
       )}
     >
@@ -498,9 +532,10 @@ export const Avatar: React.FC<AvatarProps> = ({
 // ALERT CARD COMPONENT
 // ============================================
 export interface AlertCardProps {
+  variant?: 'info' | 'success' | 'warning' | 'error';
   title: string;
-  message: string;
-  type: 'info' | 'success' | 'warning' | 'error';
+  description?: string;
+  icon?: LucideIcon;
   action?: {
     label: string;
     onClick: () => void;
@@ -509,63 +544,60 @@ export interface AlertCardProps {
 }
 
 export const AlertCard: React.FC<AlertCardProps> = ({
+  variant = 'info',
   title,
-  message,
-  type,
+  description,
+  icon: Icon,
   action,
   onDismiss,
 }) => {
-  const styles = {
-    info: 'border-primary/30 bg-primary/5',
-    success: 'border-success/30 bg-success/5',
-    warning: 'border-warning/30 bg-warning/5',
-    error: 'border-error/30 bg-error/5',
+  const variantStyles = {
+    info: {
+      container: 'bg-info/10 border-info/20',
+      icon: 'text-info',
+      title: 'text-info',
+    },
+    success: {
+      container: 'bg-success/10 border-success/20',
+      icon: 'text-success',
+      title: 'text-success',
+    },
+    warning: {
+      container: 'bg-warning/10 border-warning/20',
+      icon: 'text-warning',
+      title: 'text-warning-foreground',
+    },
+    error: {
+      container: 'bg-error/10 border-error/20',
+      icon: 'text-error',
+      title: 'text-error',
+    },
   };
 
-  const iconStyles = {
-    info: 'text-primary',
-    success: 'text-success',
-    warning: 'text-warning',
-    error: 'text-error',
-  };
+  const styles = variantStyles[variant];
 
   return (
     <div
       className={cn(
-        'rounded-xl border p-4 animate-slide-up',
-        styles[type]
+        'rounded-xl border p-4 transition-all duration-200',
+        styles.container
       )}
     >
       <div className="flex items-start gap-3">
-        <div className={cn('mt-0.5', iconStyles[type])}>
-          {type === 'info' && (
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
+        {Icon && (
+          <div className="flex-shrink-0 mt-0.5">
+            <Icon className={cn('h-5 w-5', styles.icon)} />
+          </div>
+        )}
+        <div className="flex-1 min-w-0">
+          <h4 className={cn('font-medium', styles.title)}>{title}</h4>
+          {description && (
+            <p className="text-sm text-muted-foreground mt-1">{description}</p>
           )}
-          {type === 'success' && (
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          )}
-          {type === 'warning' && (
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-          )}
-          {type === 'error' && (
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          )}
-        </div>
-        <div className="flex-1">
-          <h4 className="font-medium text-foreground">{title}</h4>
-          <p className="text-sm text-muted-foreground mt-0.5">{message}</p>
           {action && (
             <button
               onClick={action.onClick}
-              className="mt-2 text-sm font-medium text-primary hover:text-primary/80 transition-colors"
+              className="mt-3 text-sm font-medium text-primary hover:text-primary/80 transition-colors"
             >
               {action.label} →
             </button>
@@ -574,14 +606,104 @@ export const AlertCard: React.FC<AlertCardProps> = ({
         {onDismiss && (
           <button
             onClick={onDismiss}
-            className="text-muted-foreground hover:text-foreground transition-colors"
+            className="flex-shrink-0 p-1 rounded-lg hover:bg-background/50 text-muted-foreground transition-colors"
           >
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         )}
       </div>
     </div>
   );
+};
+
+// ============================================
+// STAT MINI COMPONENT
+// ============================================
+export interface StatMiniProps {
+  label: string;
+  value: string | number;
+  variant?: 'default' | 'success' | 'warning' | 'error' | 'primary';
+  className?: string;
+}
+
+export const StatMini: React.FC<StatMiniProps> = ({
+  label,
+  value,
+  variant = 'default',
+  className,
+}) => {
+  const variantStyles = {
+    default: 'border-border bg-card',
+    success: 'border-success/30 bg-success/5',
+    warning: 'border-warning/30 bg-warning/5',
+    error: 'border-error/30 bg-error/5',
+    primary: 'border-primary/30 bg-primary/5',
+  };
+
+  const valueStyles = {
+    default: 'text-foreground',
+    success: 'text-success',
+    warning: 'text-warning',
+    error: 'text-error',
+    primary: 'text-primary',
+  };
+
+  return (
+    <div
+      className={cn(
+        'rounded-xl border p-4 transition-all duration-200',
+        variantStyles[variant],
+        className
+      )}
+    >
+      <p className="text-sm text-muted-foreground font-medium">{label}</p>
+      <p className={cn('text-2xl font-bold tabular-nums mt-1 font-display', valueStyles[variant])}>
+        {value}
+      </p>
+    </div>
+  );
+};
+
+// ============================================
+// LOADING SKELETON
+// ============================================
+export interface SkeletonProps {
+  className?: string;
+}
+
+export const Skeleton: React.FC<SkeletonProps> = ({ className }) => {
+  return (
+    <div
+      className={cn(
+        'rounded-lg bg-muted animate-pulse',
+        className
+      )}
+    />
+  );
+};
+
+// ============================================
+// DIVIDER
+// ============================================
+export interface DividerProps {
+  label?: string;
+  className?: string;
+}
+
+export const Divider: React.FC<DividerProps> = ({ label, className }) => {
+  if (label) {
+    return (
+      <div className={cn('flex items-center gap-4', className)}>
+        <div className="flex-1 h-px bg-border" />
+        <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
+          {label}
+        </span>
+        <div className="flex-1 h-px bg-border" />
+      </div>
+    );
+  }
+
+  return <div className={cn('h-px bg-border', className)} />;
 };
