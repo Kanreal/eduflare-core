@@ -17,6 +17,13 @@ import StudentApplications from "./pages/student/StudentApplications";
 import StudentFinancials from "./pages/student/StudentFinancials";
 import StudentOffers from "./pages/student/StudentOffers";
 
+// Staff Pages
+import StaffDashboard from "./pages/staff/StaffDashboard";
+import LeadManager from "./pages/staff/LeadManager";
+import ActiveStudents from "./pages/staff/ActiveStudents";
+import ContractManager from "./pages/staff/ContractManager";
+import StudentDetail from "./pages/staff/StudentDetail";
+
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -43,6 +50,13 @@ const App = () => (
             <Route path="/student/applications" element={<StudentApplications />} />
             <Route path="/student/financials" element={<StudentFinancials />} />
             <Route path="/student/offers" element={<StudentOffers />} />
+            
+            {/* Staff Portal Routes */}
+            <Route path="/staff/dashboard" element={<StaffDashboard />} />
+            <Route path="/staff/leads" element={<LeadManager />} />
+            <Route path="/staff/students" element={<ActiveStudents />} />
+            <Route path="/staff/students/:id" element={<StudentDetail />} />
+            <Route path="/staff/contracts" element={<ContractManager />} />
             
             {/* Catch-all */}
             <Route path="*" element={<NotFound />} />
