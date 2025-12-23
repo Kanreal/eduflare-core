@@ -5,6 +5,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { EduFlareProvider } from "@/contexts/EduFlareContext";
+import { ImpersonationProvider } from "@/contexts/ImpersonationContext";
+import { ImpersonationBanner } from "@/components/ImpersonationBanner";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 
 // Auth Pages
@@ -43,6 +45,7 @@ import AuditLogs from "./pages/admin/AuditLogs";
 import AdminSettings from "./pages/admin/AdminSettings";
 import StaffManager from "./pages/admin/StaffManager";
 import UniversityManager from "./pages/admin/UniversityManager";
+import ContractTemplates from "./pages/admin/ContractTemplates";
 
 import NotFound from "./pages/NotFound";
 
@@ -52,9 +55,11 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
       <EduFlareProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
+        <ImpersonationProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <ImpersonationBanner />
           <BrowserRouter>
             <Routes>
               {/* Public Routes */}
@@ -98,12 +103,14 @@ const App = () => (
               <Route path="/admin/universities" element={<ProtectedRoute allowedRoles={['admin']}><UniversityManager /></ProtectedRoute>} />
               <Route path="/admin/audit" element={<ProtectedRoute allowedRoles={['admin']}><AuditLogs /></ProtectedRoute>} />
               <Route path="/admin/settings" element={<ProtectedRoute allowedRoles={['admin']}><AdminSettings /></ProtectedRoute>} />
+              <Route path="/admin/contracts" element={<ProtectedRoute allowedRoles={['admin']}><ContractTemplates /></ProtectedRoute>} />
               
               {/* Catch-all */}
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
-        </TooltipProvider>
+          </TooltipProvider>
+        </ImpersonationProvider>
       </EduFlareProvider>
     </AuthProvider>
   </QueryClientProvider>
