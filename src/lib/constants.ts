@@ -115,6 +115,7 @@ export const adminNavItems: NavItem[] = [
   { label: 'Financial Hub', path: '/admin/financials', icon: Wallet },
   { label: 'Staff Manager', path: '/admin/staff', icon: UserCog },
   { label: 'University Manager', path: '/admin/universities', icon: Building2 },
+  { label: 'Contract Templates', path: '/admin/contracts', icon: FileSignature },
   { label: 'Audit Logs', path: '/admin/audit', icon: History },
   { label: 'Settings', path: '/admin/settings', icon: Settings },
 ];
