@@ -39,7 +39,20 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { mockLeads } from '@/lib/constants';
-import { Lead, LeadStatus } from '@/types';
+import { LeadStatus } from '@/types';
+
+// Local lead type for this component's mock data
+interface LocalLead {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  status: LeadStatus;
+  source: string;
+  createdAt: Date;
+  lastContactAt?: Date;
+  assignedTo?: string;
+}
 
 const getStatusVariant = (status: string): 'primary' | 'error' | 'muted' | 'success' => {
   switch (status) {
@@ -55,7 +68,7 @@ const LeadManager: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isConvertDialogOpen, setIsConvertDialogOpen] = useState(false);
-  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  const [selectedLead, setSelectedLead] = useState<LocalLead | null>(null);
 
   const filteredLeads = mockLeads.filter((lead) => {
     const matchesSearch = lead.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -64,7 +77,7 @@ const LeadManager: React.FC = () => {
     return matchesSearch && matchesStatus;
   });
 
-  const handleConvertToStudent = (lead: Lead) => {
+  const handleConvertToStudent = (lead: LocalLead) => {
     setSelectedLead(lead);
     setIsConvertDialogOpen(true);
   };
