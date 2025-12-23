@@ -59,56 +59,56 @@ const App = () => (
           <TooltipProvider>
             <Toaster />
             <Sonner />
-            <ImpersonationBanner />
-          <BrowserRouter>
-            <Routes>
-              {/* Public Routes */}
-              <Route path="/" element={<Navigate to="/book-consultation" replace />} />
-              <Route path="/book-consultation" element={<BookConsultation />} />
-              
-              {/* Auth Routes */}
-              <Route path="/login/student" element={<StudentLogin />} />
-              <Route path="/login/internal" element={<InternalLogin />} />
-              <Route path="/student/login" element={<Navigate to="/login/student" replace />} />
-              <Route path="/portal/login" element={<Navigate to="/login/internal" replace />} />
-              <Route path="/forgot-password" element={<ForgotPassword />} />
-              <Route path="/reset-password" element={<ResetPassword />} />
-              
-              {/* Student Portal Routes - Protected */}
-              <Route path="/student/dashboard" element={<ProtectedRoute allowedRoles={['student']}><StudentDashboard /></ProtectedRoute>} />
-              <Route path="/student/profile" element={<ProtectedRoute allowedRoles={['student']}><StudentProfile /></ProtectedRoute>} />
-              <Route path="/student/documents" element={<ProtectedRoute allowedRoles={['student']}><StudentDocuments /></ProtectedRoute>} />
-              <Route path="/student/applications" element={<ProtectedRoute allowedRoles={['student']}><StudentApplications /></ProtectedRoute>} />
-              <Route path="/student/financials" element={<ProtectedRoute allowedRoles={['student']}><StudentFinancials /></ProtectedRoute>} />
-              <Route path="/student/offers" element={<ProtectedRoute allowedRoles={['student']}><StudentOffers /></ProtectedRoute>} />
-              <Route path="/student/appointments" element={<ProtectedRoute allowedRoles={['student']}><StudentAppointments /></ProtectedRoute>} />
-              <Route path="/student/settings" element={<ProtectedRoute allowedRoles={['student']}><StudentSettings /></ProtectedRoute>} />
-              
-              {/* Staff Portal Routes - Protected */}
-              <Route path="/staff/dashboard" element={<ProtectedRoute allowedRoles={['staff', 'admin']}><StaffDashboard /></ProtectedRoute>} />
-              <Route path="/staff/leads" element={<ProtectedRoute allowedRoles={['staff', 'admin']}><LeadManager /></ProtectedRoute>} />
-              <Route path="/staff/students" element={<ProtectedRoute allowedRoles={['staff', 'admin']}><ActiveStudents /></ProtectedRoute>} />
-              <Route path="/staff/students/:id" element={<ProtectedRoute allowedRoles={['staff', 'admin']}><StudentDetail /></ProtectedRoute>} />
-              <Route path="/staff/contracts" element={<ProtectedRoute allowedRoles={['staff', 'admin']}><ContractManager /></ProtectedRoute>} />
-              <Route path="/staff/universities" element={<ProtectedRoute allowedRoles={['staff', 'admin']}><UniversityList /></ProtectedRoute>} />
-              <Route path="/staff/calendar" element={<ProtectedRoute allowedRoles={['staff', 'admin']}><StaffCalendar /></ProtectedRoute>} />
-              <Route path="/staff/profile" element={<ProtectedRoute allowedRoles={['staff', 'admin']}><StaffProfile /></ProtectedRoute>} />
-              
-              {/* Admin Portal Routes - Protected */}
-              <Route path="/admin/dashboard" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />
-              <Route path="/admin/applications" element={<ProtectedRoute allowedRoles={['admin']}><ApplicationQueue /></ProtectedRoute>} />
-              <Route path="/admin/applications/:id" element={<ProtectedRoute allowedRoles={['admin']}><ApplicationDetail /></ProtectedRoute>} />
-              <Route path="/admin/financials" element={<ProtectedRoute allowedRoles={['admin']}><FinancialHub /></ProtectedRoute>} />
-              <Route path="/admin/staff" element={<ProtectedRoute allowedRoles={['admin']}><StaffManager /></ProtectedRoute>} />
-              <Route path="/admin/universities" element={<ProtectedRoute allowedRoles={['admin']}><UniversityManager /></ProtectedRoute>} />
-              <Route path="/admin/audit" element={<ProtectedRoute allowedRoles={['admin']}><AuditLogs /></ProtectedRoute>} />
-              <Route path="/admin/settings" element={<ProtectedRoute allowedRoles={['admin']}><AdminSettings /></ProtectedRoute>} />
-              <Route path="/admin/contracts" element={<ProtectedRoute allowedRoles={['admin']}><ContractTemplates /></ProtectedRoute>} />
-              
-              {/* Catch-all */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
+            <BrowserRouter>
+              <ImpersonationBanner />
+              <Routes>
+                {/* Public Routes */}
+                <Route path="/" element={<Navigate to="/book-consultation" replace />} />
+                <Route path="/book-consultation" element={<BookConsultation />} />
+                
+                {/* Auth Routes */}
+                <Route path="/login/student" element={<StudentLogin />} />
+                <Route path="/login/internal" element={<InternalLogin />} />
+                <Route path="/student/login" element={<Navigate to="/login/student" replace />} />
+                <Route path="/portal/login" element={<Navigate to="/login/internal" replace />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
+                
+                {/* Student Portal Routes - Protected */}
+                <Route path="/student/dashboard" element={<ProtectedRoute allowedRoles={['student']}><StudentDashboard /></ProtectedRoute>} />
+                <Route path="/student/profile" element={<ProtectedRoute allowedRoles={['student']}><StudentProfile /></ProtectedRoute>} />
+                <Route path="/student/documents" element={<ProtectedRoute allowedRoles={['student']}><StudentDocuments /></ProtectedRoute>} />
+                <Route path="/student/applications" element={<ProtectedRoute allowedRoles={['student']}><StudentApplications /></ProtectedRoute>} />
+                <Route path="/student/financials" element={<ProtectedRoute allowedRoles={['student']}><StudentFinancials /></ProtectedRoute>} />
+                <Route path="/student/offers" element={<ProtectedRoute allowedRoles={['student']}><StudentOffers /></ProtectedRoute>} />
+                <Route path="/student/appointments" element={<ProtectedRoute allowedRoles={['student']}><StudentAppointments /></ProtectedRoute>} />
+                <Route path="/student/settings" element={<ProtectedRoute allowedRoles={['student']}><StudentSettings /></ProtectedRoute>} />
+                
+                {/* Staff Portal Routes - Protected */}
+                <Route path="/staff/dashboard" element={<ProtectedRoute allowedRoles={['staff', 'admin']}><StaffDashboard /></ProtectedRoute>} />
+                <Route path="/staff/leads" element={<ProtectedRoute allowedRoles={['staff', 'admin']}><LeadManager /></ProtectedRoute>} />
+                <Route path="/staff/students" element={<ProtectedRoute allowedRoles={['staff', 'admin']}><ActiveStudents /></ProtectedRoute>} />
+                <Route path="/staff/students/:id" element={<ProtectedRoute allowedRoles={['staff', 'admin']}><StudentDetail /></ProtectedRoute>} />
+                <Route path="/staff/contracts" element={<ProtectedRoute allowedRoles={['staff', 'admin']}><ContractManager /></ProtectedRoute>} />
+                <Route path="/staff/universities" element={<ProtectedRoute allowedRoles={['staff', 'admin']}><UniversityList /></ProtectedRoute>} />
+                <Route path="/staff/calendar" element={<ProtectedRoute allowedRoles={['staff', 'admin']}><StaffCalendar /></ProtectedRoute>} />
+                <Route path="/staff/profile" element={<ProtectedRoute allowedRoles={['staff', 'admin']}><StaffProfile /></ProtectedRoute>} />
+                
+                {/* Admin Portal Routes - Protected */}
+                <Route path="/admin/dashboard" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />
+                <Route path="/admin/applications" element={<ProtectedRoute allowedRoles={['admin']}><ApplicationQueue /></ProtectedRoute>} />
+                <Route path="/admin/applications/:id" element={<ProtectedRoute allowedRoles={['admin']}><ApplicationDetail /></ProtectedRoute>} />
+                <Route path="/admin/financials" element={<ProtectedRoute allowedRoles={['admin']}><FinancialHub /></ProtectedRoute>} />
+                <Route path="/admin/staff" element={<ProtectedRoute allowedRoles={['admin']}><StaffManager /></ProtectedRoute>} />
+                <Route path="/admin/universities" element={<ProtectedRoute allowedRoles={['admin']}><UniversityManager /></ProtectedRoute>} />
+                <Route path="/admin/audit" element={<ProtectedRoute allowedRoles={['admin']}><AuditLogs /></ProtectedRoute>} />
+                <Route path="/admin/settings" element={<ProtectedRoute allowedRoles={['admin']}><AdminSettings /></ProtectedRoute>} />
+                <Route path="/admin/contracts" element={<ProtectedRoute allowedRoles={['admin']}><ContractTemplates /></ProtectedRoute>} />
+                
+                {/* Catch-all */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </BrowserRouter>
           </TooltipProvider>
         </ImpersonationProvider>
       </EduFlareProvider>
