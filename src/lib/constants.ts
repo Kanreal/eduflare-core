@@ -103,6 +103,7 @@ export const staffNavItems: NavItem[] = [
   { label: 'Dashboard', path: '/staff/dashboard', icon: LayoutDashboard },
   { label: 'Lead Manager', path: '/staff/leads', icon: UserPlus },
   { label: 'Active Students', path: '/staff/students', icon: Users },
+  { label: 'Applications', path: '/staff/applications', icon: ClipboardList },
   { label: 'Contract Manager', path: '/staff/contracts', icon: FileSignature },
   { label: 'University List', path: '/staff/universities', icon: Building2 },
   { label: 'Calendar', path: '/staff/calendar', icon: Calendar },
