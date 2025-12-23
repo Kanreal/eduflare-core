@@ -219,12 +219,12 @@ export const EduFlareProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       if (s.isProfileLocked && !updates.isProfileLocked && !updates.unlockedFields) {
         // Only allow updates to unlocked fields
         const allowedFields = s.unlockedFields || [];
-        const filteredUpdates = Object.entries(updates).reduce((acc, [key, value]) => {
+        const filteredUpdates: Partial<Student> = {};
+        Object.entries(updates).forEach(([key, value]) => {
           if (allowedFields.includes(key) || ['status', 'offersUnlocked'].includes(key)) {
-            acc[key as keyof Student] = value;
+            (filteredUpdates as Record<string, unknown>)[key] = value;
           }
-          return acc;
-        }, {} as Partial<Student>);
+        });
         return { ...s, ...filteredUpdates };
       }
       

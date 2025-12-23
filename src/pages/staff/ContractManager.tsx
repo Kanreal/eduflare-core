@@ -84,8 +84,10 @@ const mockContractsData = [
 const statusVariants: Record<ContractStatus, 'muted' | 'warning' | 'success' | 'error'> = {
   draft: 'muted',
   pending: 'warning',
+  pending_signature: 'warning',
   signed: 'success',
   expired: 'error',
+  cancelled: 'muted',
 };
 
 const ContractManager: React.FC = () => {
