@@ -148,7 +148,7 @@ const StaffUniversityList: React.FC = () => {
                       <Building2 className="w-6 h-6 text-primary" />
                     </div>
                     {uni.isPartner && (
-                      <StatusBadge status="Partner" variant="success" />
+                      <StatusBadge variant="success">Partner</StatusBadge>
                     )}
                   </div>
                   <CardTitle className="text-lg">{uni.name}</CardTitle>

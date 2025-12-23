@@ -252,10 +252,9 @@ const StaffManager: React.FC = () => {
                         <span className="text-muted-foreground">Students: </span>
                         <span className="font-semibold text-foreground">{staff.studentsManaged}</span>
                       </div>
-                      <StatusBadge 
-                        status={staff.isActive ? 'Active' : 'Inactive'} 
-                        variant={staff.isActive ? 'success' : 'muted'} 
-                      />
+                      <StatusBadge variant={staff.isActive ? 'success' : 'muted'}>
+                        {staff.isActive ? 'Active' : 'Inactive'}
+                      </StatusBadge>
                     </div>
                     <div className="text-xs text-muted-foreground">
                       Joined {format(staff.createdAt, 'MMM d, yyyy')}
