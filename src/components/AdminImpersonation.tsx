@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Eye, Users, Shield, Briefcase, Search } from 'lucide-react';
+import { Eye, Briefcase, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useImpersonation } from '@/contexts/ImpersonationContext';
@@ -35,7 +35,7 @@ const mockStaffList = [
 ];
 
 export const AdminImpersonation: React.FC<AdminImpersonationProps> = ({ className }) => {
-  const { role } = useAuth();
+  const { role, user } = useAuth();
   const { isImpersonating, startImpersonation } = useImpersonation();
   const navigate = useNavigate();
   const [isStaffDialogOpen, setIsStaffDialogOpen] = useState(false);
@@ -53,7 +53,9 @@ export const AdminImpersonation: React.FC<AdminImpersonationProps> = ({ classNam
   const handleImpersonateStaff = (staff: typeof mockStaffList[0]) => {
     startImpersonation(
       { id: staff.id, name: staff.name, email: staff.email, role: 'staff' },
-      'staff'
+      'staff',
+      user?.id || 'admin-unknown',
+      user?.name || 'Admin'
     );
     setIsStaffDialogOpen(false);
     navigate('/staff/dashboard');
@@ -99,7 +101,7 @@ export const AdminImpersonation: React.FC<AdminImpersonationProps> = ({ classNam
               Select Staff to Impersonate
             </DialogTitle>
             <DialogDescription>
-              Choose a staff member to view the system as they would see it.
+              Choose a staff member to view the system as they would see it. All actions will be logged.
             </DialogDescription>
           </DialogHeader>
           <div className="py-4 space-y-4">
@@ -153,17 +155,19 @@ export const StudentImpersonationButton: React.FC<StudentImpersonationButtonProp
   student,
   className,
 }) => {
-  const { role } = useAuth();
-  const { startImpersonation } = useImpersonation();
+  const { role, user } = useAuth();
+  const { startImpersonation, isImpersonating } = useImpersonation();
   const navigate = useNavigate();
 
-  // Only show for admins
-  if (role !== 'admin') return null;
+  // Only show for admins when not already impersonating
+  if (role !== 'admin' || isImpersonating) return null;
 
   const handleImpersonate = () => {
     startImpersonation(
       { id: student.id, name: student.name, email: student.email, role: 'student' },
-      'student'
+      'student',
+      user?.id || 'admin-unknown',
+      user?.name || 'Admin'
     );
     navigate('/student/dashboard');
   };
@@ -173,7 +177,7 @@ export const StudentImpersonationButton: React.FC<StudentImpersonationButtonProp
       variant="outline"
       size="sm"
       onClick={handleImpersonate}
-      className={cn('gap-2', className)}
+      className={cn('gap-2 border-primary/30 text-primary hover:bg-primary/10', className)}
     >
       <Eye className="w-4 h-4" />
       View as Student

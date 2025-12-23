@@ -34,6 +34,8 @@ import {
 import { applicationSteps, mockDocuments } from '@/lib/constants';
 import { PassportExpiryWarning, usePassportValidation } from '@/components/PassportExpiryWarning';
 import { BatchSelector } from '@/components/BatchSelector';
+import { StudentImpersonationButton } from '@/components/AdminImpersonation';
+import { useAuth } from '@/contexts/AuthContext';
 
 // Mock student detail with passport expiry
 const mockStudentDetail = {
@@ -67,6 +69,7 @@ const mockUniversities = [
 const StudentDetail: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { role } = useAuth();
   const [activeTab, setActiveTab] = useState('profile');
   const [isSubmitDialogOpen, setIsSubmitDialogOpen] = useState(false);
   const [selectedApp, setSelectedApp] = useState<string | null>(null);
@@ -76,6 +79,8 @@ const StudentDetail: React.FC = () => {
 
   const student = mockStudentDetail;
   const documents = mockDocuments;
+  
+  const isAdmin = role === 'admin';
 
   // Passport validation
   const passportValidation = usePassportValidation(student.passportExpiry, 6);
@@ -103,7 +108,18 @@ const StudentDetail: React.FC = () => {
           <div className="flex items-start gap-4">
             <Avatar name={student.name} size="lg" />
             <div>
-              <h1 className="text-2xl font-bold text-foreground">{student.name}</h1>
+              <div className="flex items-center gap-3">
+                <h1 className="text-2xl font-bold text-foreground">{student.name}</h1>
+                {isAdmin && (
+                  <StudentImpersonationButton 
+                    student={{ 
+                      id: student.id, 
+                      name: student.name, 
+                      email: student.email 
+                    }} 
+                  />
+                )}
+              </div>
               <div className="flex flex-wrap items-center gap-3 mt-2 text-sm text-muted-foreground">
                 <span className="flex items-center gap-1">
                   <Mail className="w-4 h-4" />

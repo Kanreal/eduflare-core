@@ -7,10 +7,12 @@ import {
   Shield,
   DollarSign,
   Mail,
-  Users,
   Globe,
   Lock,
   CheckCircle,
+  Edit2,
+  Calculator,
+  Users,
 } from 'lucide-react';
 import { PortalLayout } from '@/components/layout/PortalLayout';
 import { Button } from '@/components/ui/button';
@@ -26,10 +28,40 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { toast } from '@/hooks/use-toast';
+
+// Scholarship pricing types
+type ScholarshipType = 'self_support' | 'partial_b' | 'partial_a' | 'full_b' | 'full_a';
+
+interface PricingRow {
+  type: ScholarshipType;
+  label: string;
+  totalServiceFee: number;
+  depositPaid: number;
+  creditApplied: number;
+  clientPays: number; // Computed: totalServiceFee - depositPaid + creditApplied
+}
+
+// Default pricing as per spec
+const defaultPricing: PricingRow[] = [
+  { type: 'self_support', label: 'Self-Support', totalServiceFee: 1000, depositPaid: 750, creditApplied: 500, clientPays: 500 },
+  { type: 'partial_b', label: 'Partial B', totalServiceFee: 1250, depositPaid: 750, creditApplied: 500, clientPays: 750 },
+  { type: 'partial_a', label: 'Partial A', totalServiceFee: 1500, depositPaid: 750, creditApplied: 500, clientPays: 1000 },
+  { type: 'full_b', label: 'Full B', totalServiceFee: 1750, depositPaid: 750, creditApplied: 500, clientPays: 1250 },
+  { type: 'full_a', label: 'Full A', totalServiceFee: 2000, depositPaid: 750, creditApplied: 500, clientPays: 1500 },
+];
 
 const AdminSettings: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
+  const [activeTab, setActiveTab] = useState('general');
 
   // General settings
   const [companyName, setCompanyName] = useState('EduFlare Consulting');
@@ -42,10 +74,16 @@ const AdminSettings: React.FC = () => {
   const [paymentAlerts, setPaymentAlerts] = useState(true);
   const [documentAlerts, setDocumentAlerts] = useState(false);
 
-  // Financial settings
-  const [commissionRate, setCommissionRate] = useState('15');
-  const [currency, setCurrency] = useState('USD');
-  const [autoInvoicing, setAutoInvoicing] = useState(true);
+  // Pricing settings
+  const [pricing, setPricing] = useState<PricingRow[]>(defaultPricing);
+  const [editingRow, setEditingRow] = useState<ScholarshipType | null>(null);
+  const [editForm, setEditForm] = useState<Partial<PricingRow>>({});
+
+  // Commission settings
+  const [commissionAmount, setCommissionAmount] = useState('20000'); // TZS
+  const [commissionCurrency, setCommissionCurrency] = useState('TZS');
+  const [commissionTriggerDeposit, setCommissionTriggerDeposit] = useState(true);
+  const [commissionTriggerContract, setCommissionTriggerContract] = useState(true);
 
   // Security settings
   const [twoFactorRequired, setTwoFactorRequired] = useState(false);
@@ -59,8 +97,49 @@ const AdminSettings: React.FC = () => {
     setIsSaving(false);
     toast({
       title: "Settings saved",
-      description: "Your settings have been updated successfully.",
+      description: "Your settings have been updated successfully. Pricing changes apply to NEW contracts only.",
     });
+  };
+
+  const handleEditPricing = (row: PricingRow) => {
+    setEditingRow(row.type);
+    setEditForm({ ...row });
+  };
+
+  const handleSavePricing = () => {
+    if (!editingRow || !editForm) return;
+    
+    setPricing(prev => prev.map(row => {
+      if (row.type === editingRow) {
+        const totalServiceFee = editForm.totalServiceFee || row.totalServiceFee;
+        const depositPaid = editForm.depositPaid || row.depositPaid;
+        const creditApplied = editForm.creditApplied || row.creditApplied;
+        // Formula: Final Balance = (Scholarship Fee) - (Initial Deposit - 250 Credit)
+        // Client Pays = Total Service Fee - Deposit + Credit Applied
+        const clientPays = totalServiceFee - depositPaid + creditApplied;
+        
+        return {
+          ...row,
+          totalServiceFee,
+          depositPaid,
+          creditApplied,
+          clientPays,
+        };
+      }
+      return row;
+    }));
+    
+    setEditingRow(null);
+    setEditForm({});
+    toast({
+      title: "Pricing updated",
+      description: "Remember: Changes apply to NEW contracts only.",
+    });
+  };
+
+  const cancelEdit = () => {
+    setEditingRow(null);
+    setEditForm({});
   };
 
   return (
@@ -86,19 +165,23 @@ const AdminSettings: React.FC = () => {
         </div>
 
         {/* Settings Tabs */}
-        <Tabs defaultValue="general" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2 lg:grid-cols-4 lg:w-auto lg:inline-grid">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList className="grid w-full grid-cols-2 lg:grid-cols-5 lg:w-auto lg:inline-grid">
             <TabsTrigger value="general" className="gap-2">
               <Globe className="w-4 h-4" />
               General
             </TabsTrigger>
+            <TabsTrigger value="pricing" className="gap-2">
+              <Calculator className="w-4 h-4" />
+              Pricing
+            </TabsTrigger>
+            <TabsTrigger value="commission" className="gap-2">
+              <Users className="w-4 h-4" />
+              Commission
+            </TabsTrigger>
             <TabsTrigger value="notifications" className="gap-2">
               <Bell className="w-4 h-4" />
               Notifications
-            </TabsTrigger>
-            <TabsTrigger value="financial" className="gap-2">
-              <DollarSign className="w-4 h-4" />
-              Financial
             </TabsTrigger>
             <TabsTrigger value="security" className="gap-2">
               <Shield className="w-4 h-4" />
@@ -149,12 +232,200 @@ const AdminSettings: React.FC = () => {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="UTC">UTC</SelectItem>
+                      <SelectItem value="EAT">East Africa Time (EAT)</SelectItem>
                       <SelectItem value="EST">Eastern Time (EST)</SelectItem>
                       <SelectItem value="PST">Pacific Time (PST)</SelectItem>
                       <SelectItem value="GMT">Greenwich Mean Time (GMT)</SelectItem>
                       <SelectItem value="CST">China Standard Time (CST)</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+              </div>
+            </motion.div>
+          </TabsContent>
+
+          {/* Pricing Settings */}
+          <TabsContent value="pricing">
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="rounded-xl border border-border bg-card p-6 shadow-card"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="font-semibold text-foreground flex items-center gap-2">
+                    <Calculator className="w-5 h-5 text-primary" />
+                    Pricing Engine
+                  </h2>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Manage scholarship pricing. Changes apply to NEW contracts only.
+                  </p>
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-border overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/50">
+                      <TableHead className="font-semibold">Scholarship Type</TableHead>
+                      <TableHead className="text-right font-semibold">Total Service Fee (USD)</TableHead>
+                      <TableHead className="text-right font-semibold">Deposit (USD)</TableHead>
+                      <TableHead className="text-right font-semibold">Credit Applied (USD)</TableHead>
+                      <TableHead className="text-right font-semibold">Client Pays (USD)</TableHead>
+                      <TableHead className="text-center font-semibold">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {pricing.map((row) => (
+                      <TableRow key={row.type}>
+                        <TableCell className="font-medium">{row.label}</TableCell>
+                        <TableCell className="text-right">
+                          {editingRow === row.type ? (
+                            <Input
+                              type="number"
+                              value={editForm.totalServiceFee || ''}
+                              onChange={(e) => setEditForm({ ...editForm, totalServiceFee: Number(e.target.value) })}
+                              className="w-24 text-right ml-auto"
+                            />
+                          ) : (
+                            `$${row.totalServiceFee.toLocaleString()}`
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {editingRow === row.type ? (
+                            <Input
+                              type="number"
+                              value={editForm.depositPaid || ''}
+                              onChange={(e) => setEditForm({ ...editForm, depositPaid: Number(e.target.value) })}
+                              className="w-24 text-right ml-auto"
+                            />
+                          ) : (
+                            `$${row.depositPaid.toLocaleString()}`
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {editingRow === row.type ? (
+                            <Input
+                              type="number"
+                              value={editForm.creditApplied || ''}
+                              onChange={(e) => setEditForm({ ...editForm, creditApplied: Number(e.target.value) })}
+                              className="w-24 text-right ml-auto"
+                            />
+                          ) : (
+                            `$${row.creditApplied.toLocaleString()}`
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right font-semibold text-primary">
+                          ${row.clientPays.toLocaleString()}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {editingRow === row.type ? (
+                            <div className="flex items-center justify-center gap-2">
+                              <Button size="sm" onClick={handleSavePricing}>Save</Button>
+                              <Button size="sm" variant="ghost" onClick={cancelEdit}>Cancel</Button>
+                            </div>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleEditPricing(row)}
+                              className="gap-1"
+                            >
+                              <Edit2 className="w-3 h-3" />
+                              Edit
+                            </Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              <div className="mt-4 p-4 rounded-lg bg-muted/30 border border-border">
+                <p className="text-sm text-muted-foreground">
+                  <strong>Formula:</strong> Client Pays = Total Service Fee - Deposit + Credit Applied
+                </p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  <strong>Note:</strong> When a contract is generated, the current pricing is snapshotted and stored with the contract. Future pricing changes will not affect existing contracts.
+                </p>
+              </div>
+            </motion.div>
+          </TabsContent>
+
+          {/* Commission Settings */}
+          <TabsContent value="commission">
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="rounded-xl border border-border bg-card p-6 shadow-card"
+            >
+              <h2 className="font-semibold text-foreground mb-6 flex items-center gap-2">
+                <Users className="w-5 h-5 text-primary" />
+                Staff Commission Settings
+              </h2>
+              <div className="grid gap-6 max-w-2xl">
+                <div className="space-y-2">
+                  <Label htmlFor="commission-amount">Commission Amount per Contract</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="commission-amount"
+                      type="number"
+                      value={commissionAmount}
+                      onChange={(e) => setCommissionAmount(e.target.value)}
+                      placeholder="20000"
+                      className="flex-1"
+                    />
+                    <Select value={commissionCurrency} onValueChange={setCommissionCurrency}>
+                      <SelectTrigger className="w-24">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="TZS">TZS</SelectItem>
+                        <SelectItem value="USD">USD</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Default: 20,000 TZS per completed contract
+                  </p>
+                </div>
+
+                <div className="space-y-4">
+                  <Label className="text-base font-medium">Commission Trigger Rules</Label>
+                  <p className="text-sm text-muted-foreground -mt-2">
+                    Commission is earned when ALL selected conditions are met:
+                  </p>
+                  
+                  <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
+                    <div>
+                      <p className="font-medium text-foreground">Contract Signed</p>
+                      <p className="text-sm text-muted-foreground">Student must sign the service agreement</p>
+                    </div>
+                    <Switch 
+                      checked={commissionTriggerContract} 
+                      onCheckedChange={setCommissionTriggerContract}
+                    />
+                  </div>
+                  
+                  <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
+                    <div>
+                      <p className="font-medium text-foreground">Deposit Paid ($750 USD)</p>
+                      <p className="text-sm text-muted-foreground">Student must pay the initial deposit</p>
+                    </div>
+                    <Switch 
+                      checked={commissionTriggerDeposit} 
+                      onCheckedChange={setCommissionTriggerDeposit}
+                    />
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-lg border border-warning/30 bg-warning/5">
+                  <h4 className="font-medium text-foreground mb-2">Clawback Rules</h4>
+                  <ul className="text-sm text-muted-foreground space-y-1">
+                    <li>• <strong>Before payout:</strong> Commission is voided if student cancels</li>
+                    <li>• <strong>After payout:</strong> Negative entry applied to next payroll</li>
+                  </ul>
                 </div>
               </div>
             </motion.div>
@@ -199,59 +470,6 @@ const AdminSettings: React.FC = () => {
                     <p className="text-sm text-muted-foreground">Get notified about document uploads</p>
                   </div>
                   <Switch checked={documentAlerts} onCheckedChange={setDocumentAlerts} />
-                </div>
-              </div>
-            </motion.div>
-          </TabsContent>
-
-          {/* Financial Settings */}
-          <TabsContent value="financial">
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="rounded-xl border border-border bg-card p-6 shadow-card"
-            >
-              <h2 className="font-semibold text-foreground mb-6 flex items-center gap-2">
-                <DollarSign className="w-5 h-5 text-primary" />
-                Financial Settings
-              </h2>
-              <div className="grid gap-6 max-w-2xl">
-                <div className="space-y-2">
-                  <Label htmlFor="commission-rate">Default Commission Rate (%)</Label>
-                  <Input
-                    id="commission-rate"
-                    type="number"
-                    value={commissionRate}
-                    onChange={(e) => setCommissionRate(e.target.value)}
-                    placeholder="15"
-                    min="0"
-                    max="100"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    This rate applies to all new staff members by default
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="currency">Default Currency</Label>
-                  <Select value={currency} onValueChange={setCurrency}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select currency" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="USD">USD - US Dollar</SelectItem>
-                      <SelectItem value="EUR">EUR - Euro</SelectItem>
-                      <SelectItem value="GBP">GBP - British Pound</SelectItem>
-                      <SelectItem value="CNY">CNY - Chinese Yuan</SelectItem>
-                      <SelectItem value="AUD">AUD - Australian Dollar</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
-                  <div>
-                    <p className="font-medium text-foreground">Auto Invoicing</p>
-                    <p className="text-sm text-muted-foreground">Automatically generate invoices for new contracts</p>
-                  </div>
-                  <Switch checked={autoInvoicing} onCheckedChange={setAutoInvoicing} />
                 </div>
               </div>
             </motion.div>
