@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Shield, Mail, Lock, Eye, EyeOff, ArrowRight, Building2 } from 'lucide-react';
+import { Shield, Mail, Lock, Eye, EyeOff, ArrowRight, Building2, BarChart3, ClipboardList, CreditCard, History } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
 const InternalLogin: React.FC = () => {
@@ -200,11 +200,13 @@ const InternalLogin: React.FC = () => {
             className="mt-16 space-y-4 w-full max-w-sm"
           >
             {[
-              { icon: '📊', label: 'Real-time Analytics Dashboard' },
-              { icon: '📋', label: 'Application Queue Management' },
-              { icon: '💰', label: 'Financial Overview & Reporting' },
-              { icon: '🔒', label: 'Complete Audit Trail' },
-            ].map((feature, i) => (
+              { icon: BarChart3, label: 'Real-time Analytics Dashboard' },
+              { icon: ClipboardList, label: 'Application Queue Management' },
+              { icon: CreditCard, label: 'Financial Overview & Reporting' },
+              { icon: History, label: 'Complete Audit Trail' },
+            ].map((feature, i) => {
+              const IconComponent = feature.icon;
+              return (
               <motion.div
                 key={i}
                 initial={{ opacity: 0, x: 20 }}
@@ -212,10 +214,10 @@ const InternalLogin: React.FC = () => {
                 transition={{ delay: 0.5 + i * 0.1 }}
                 className="flex items-center gap-3 bg-background/10 backdrop-blur-sm rounded-lg p-3"
               >
-                <span className="text-xl">{feature.icon}</span>
+                <IconComponent className="w-6 h-6 text-background/90" />
                 <span className="text-sm text-background/90">{feature.label}</span>
               </motion.div>
-            ))}
+            )})}
           </motion.div>
         </div>
       </div>

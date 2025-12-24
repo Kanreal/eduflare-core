@@ -217,7 +217,13 @@ const LeadDetail: React.FC = () => {
           <div className="flex flex-wrap gap-3">
             {!isEditing && (
               <>
-                <Button variant="outline" onClick={() => setIsEditing(true)} className="gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => { if (lead.status !== 'converted') setIsEditing(true); }}
+                  className="gap-2"
+                  disabled={lead.status === 'converted'}
+                  title={lead.status === 'converted' ? 'Lead converted — edit in student profile' : undefined}
+                >
                   <Edit className="w-4 h-4" />
                   Edit Lead
                 </Button>

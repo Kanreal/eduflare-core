@@ -34,10 +34,8 @@ import { useImpersonation } from '@/contexts/ImpersonationContext';
 import { useEduFlare } from '@/contexts/EduFlareContext';
 import { mockAuditLogs } from '@/lib/constants';
 
-// Extended mock audit logs
-const extendedAuditLogs = [
-  ...mockAuditLogs,
-  { id: 'log-4', userId: 'staff-2', userName: 'Tom Wilson', userRole: 'staff' as const, action: 'Updated Student Profile', details: 'Changed contact information for Sarah Miller', entityType: 'student' as const, entityId: 'std-2', timestamp: new Date(Date.now() - 3600000), ipAddress: '192.168.1.5', isOverride: false },
+// Additional audit logs to extend the context logs
+const additionalAuditLogs = [
   { id: 'log-5', userId: 'admin-1', userName: 'Michael Chen', userRole: 'admin' as const, action: 'Processed Refund', details: 'Refund of $2,500 approved for Emily Wilson', entityType: 'payment' as const, entityId: 'pay-3', timestamp: new Date(Date.now() - 7200000), ipAddress: '192.168.1.1', isOverride: false },
   { id: 'log-6', userId: 'staff-1', userName: 'Sarah Johnson', userRole: 'staff' as const, action: 'Uploaded Document', details: 'Bank statement uploaded for John Doe', entityType: 'document' as const, entityId: 'doc-7', timestamp: new Date(Date.now() - 10800000), ipAddress: '192.168.1.2', isOverride: false },
   { id: 'log-7', userId: 'admin-1', userName: 'Michael Chen', userRole: 'admin' as const, action: 'Changed System Settings', details: 'Updated commission rate to 15%', entityType: 'settings' as const, entityId: 'set-1', timestamp: new Date(Date.now() - 86400000), ipAddress: '192.168.1.1', isOverride: false },
@@ -80,8 +78,8 @@ const AuditLogs: React.FC = () => {
   const { impersonationLogs } = useImpersonation();
   const { auditLogs, unlockRequests } = useEduFlare();
 
-  // Combine extended mock logs with context audit logs
-  const allAuditLogs = [...extendedAuditLogs, ...auditLogs];
+  // Combine context audit logs with additional logs
+  const allAuditLogs = [...auditLogs, ...additionalAuditLogs];
 
   // Filter unlock-related audit entries
   const unlockAuditLogs = allAuditLogs.filter(log => 

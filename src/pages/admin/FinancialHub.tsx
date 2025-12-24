@@ -33,15 +33,26 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
+import { formatCurrency } from '@/lib/constants';
 
 // Mock transactions
 const mockTransactions = [
-  { id: 'tx-1', type: 'payment', amount: 5000, description: 'Consultation Fee', studentName: 'John Doe', status: 'completed', createdAt: new Date('2024-03-15') },
-  { id: 'tx-2', type: 'payment', amount: 15000, description: 'Application Processing Fee', studentName: 'Sarah Miller', status: 'completed', createdAt: new Date('2024-03-14') },
-  { id: 'tx-3', type: 'refund', amount: 2500, description: 'Partial Refund', studentName: 'Emily Wilson', status: 'pending', createdAt: new Date('2024-03-13') },
-  { id: 'tx-4', type: 'payment', amount: 8000, description: 'Document Verification', studentName: 'Michael Chen', status: 'completed', createdAt: new Date('2024-03-12') },
-  { id: 'tx-5', type: 'refund', amount: 5000, description: 'Service Cancellation', studentName: 'David Brown', status: 'pending', createdAt: new Date('2024-03-11') },
+  { id: 'tx-1', type: 'payment', amount: 5000, currency: 'USD', description: 'Consultation Fee', studentName: 'John Doe', status: 'completed', createdAt: new Date('2024-03-15') },
+  { id: 'tx-2', type: 'payment', amount: 15000, currency: 'USD', description: 'Application Processing Fee', studentName: 'Sarah Miller', status: 'completed', createdAt: new Date('2024-03-14') },
+  { id: 'tx-3', type: 'refund', amount: 2500, currency: 'USD', description: 'Partial Refund', studentName: 'Emily Wilson', status: 'pending', createdAt: new Date('2024-03-13') },
+  { id: 'tx-4', type: 'payment', amount: 8000, currency: 'USD', description: 'Document Verification', studentName: 'Michael Chen', status: 'completed', createdAt: new Date('2024-03-12') },
+  { id: 'tx-5', type: 'refund', amount: 5000, currency: 'USD', description: 'Service Cancellation', studentName: 'David Brown', status: 'pending', createdAt: new Date('2024-03-11') },
 ];
+
+// Mock lead payments
+const mockLeadPayments = [
+  { id: 'tx-lead-1', type: 'lead_payment', amount: 50000, currency: 'TZS', description: 'Opening Book Fee', studentName: 'John Doe', status: 'completed', createdAt: new Date('2024-03-20') },
+  { id: 'tx-lead-2', type: 'lead_payment', amount: 75000, currency: 'TZS', description: 'Consultation Fee', studentName: 'Sarah Miller', status: 'completed', createdAt: new Date('2024-03-18') },
+  { id: 'tx-lead-3', type: 'lead_payment', amount: 150, currency: 'USD', description: 'Opening Book Fee', studentName: 'Michael Chen', status: 'completed', createdAt: new Date('2024-03-15') },
+];
+
+// Combine all transactions
+const allTransactions = [...mockTransactions, ...mockLeadPayments];
 
 // Mock refund requests
 const mockRefundRequests = [
@@ -63,7 +74,7 @@ const FinancialHub: React.FC = () => {
   const [selectedRefund, setSelectedRefund] = useState<typeof mockRefundRequests[0] | null>(null);
   const [isApproveDialogOpen, setIsApproveDialogOpen] = useState(false);
 
-  const filteredTransactions = mockTransactions.filter((tx) => {
+  const filteredTransactions = allTransactions.filter((tx) => {
     const matchesSearch = tx.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
       tx.studentName.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesType = typeFilter === 'all' || tx.type === typeFilter;
@@ -186,6 +197,7 @@ const FinancialHub: React.FC = () => {
                   <SelectContent>
                     <SelectItem value="all">All Types</SelectItem>
                     <SelectItem value="payment">Payments</SelectItem>
+                    <SelectItem value="lead_payment">Lead Payments</SelectItem>
                     <SelectItem value="refund">Refunds</SelectItem>
                   </SelectContent>
                 </Select>
@@ -216,9 +228,9 @@ const FinancialHub: React.FC = () => {
                         >
                           <td className="p-4">
                             <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                              tx.type === 'payment' ? 'bg-success/10' : 'bg-error/10'
+                              tx.type === 'payment' || tx.type === 'lead_payment' ? 'bg-success/10' : 'bg-error/10'
                             }`}>
-                              {tx.type === 'payment' ? (
+                              {tx.type === 'payment' || tx.type === 'lead_payment' ? (
                                 <ArrowDownLeft className="w-4 h-4 text-success" />
                               ) : (
                                 <ArrowUpRight className="w-4 h-4 text-error" />
@@ -237,9 +249,10 @@ const FinancialHub: React.FC = () => {
                           </td>
                           <td className="p-4 text-right">
                             <span className={`font-semibold tabular-nums ${
-                              tx.type === 'payment' ? 'text-success' : 'text-error'
+                              tx.type === 'payment' || tx.type === 'lead_payment' ? 'text-success' : 'text-error'
                             }`}>
-                              {tx.type === 'payment' ? '+' : '-'}${tx.amount.toLocaleString()}
+                              {tx.type === 'payment' || tx.type === 'lead_payment' ? '+' : '-'}
+                              {formatCurrency(tx.amount, tx.currency || 'USD')}
                             </span>
                           </td>
                           <td className="p-4">

@@ -46,6 +46,8 @@ type ViewMode = 'month' | 'week' | 'day';
 
 const StaffCalendar: React.FC = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
+  // Selected date for details panel and single active selection (defaults to today)
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>('month');
 
   const getEventsForDay = (date: Date) => {
@@ -96,7 +98,9 @@ const StaffCalendar: React.FC = () => {
   };
 
   const goToToday = () => {
-    setCurrentDate(new Date());
+    const today = new Date();
+    setCurrentDate(today);
+    setSelectedDate(today);
   };
 
   // Generate calendar days for month view
@@ -115,7 +119,7 @@ const StaffCalendar: React.FC = () => {
     return Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
   };
 
-  const todayEvents = getEventsForDay(new Date());
+  const selectedEvents = getEventsForDay(selectedDate);
   const upcomingEvents = mockEvents
     .filter(event => event.dateTime > new Date())
     .sort((a, b) => a.dateTime.getTime() - b.dateTime.getTime())
@@ -149,15 +153,17 @@ const StaffCalendar: React.FC = () => {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: index * 0.005 }}
-                className={`min-h-28 p-2 rounded-lg border transition-colors ${
-                  isToday 
-                    ? 'border-primary bg-primary/5' 
-                    : 'border-border/50 hover:border-border'
-                } ${!isCurrentMonth ? 'opacity-40' : ''}`}
+                onClick={() => {
+                  setSelectedDate(day);
+                  setCurrentDate(day);
+                }}
+                className={`min-h-28 p-2 rounded-lg border transition-colors cursor-pointer ${!isCurrentMonth ? 'opacity-40' : ''} ${
+                  isSameDay(day, selectedDate) ? 'border-primary bg-primary/10' : 'border-border/50 hover:border-border'
+                }`}
               >
                 <div className="flex items-center justify-between mb-1">
                   <span className={`text-sm font-medium ${
-                    isToday ? 'text-primary' : 'text-foreground'
+                    isSameDay(day, selectedDate) ? 'text-primary' : 'text-foreground'
                   }`}>
                     {format(day, 'd')}
                   </span>
@@ -203,19 +209,23 @@ const StaffCalendar: React.FC = () => {
           const dayEvents = getEventsForDay(day);
           const isToday = isSameDay(day, new Date());
 
-          return (
-            <motion.div
-              key={index}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.05 }}
-              className={`min-h-64 p-3 rounded-lg border ${
-                isToday ? 'border-primary bg-primary/5' : 'border-border/50'
+            return (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.05 }}
+                onClick={() => {
+                  setSelectedDate(day);
+                  setCurrentDate(day);
+                }}
+                className={`min-h-64 p-3 rounded-lg border cursor-pointer ${
+                isSameDay(day, selectedDate) ? 'border-primary bg-primary/10' : 'border-border/50'
               }`}
-            >
+              >
               <div className="text-center mb-3">
                 <p className="text-xs text-muted-foreground">{format(day, 'EEE')}</p>
-                <p className={`text-xl font-semibold ${isToday ? 'text-primary' : 'text-foreground'}`}>
+                <p className={`text-xl font-semibold ${isSameDay(day, selectedDate) ? 'text-primary' : 'text-foreground'}`}>
                   {format(day, 'd')}
                 </p>
               </div>
@@ -331,7 +341,7 @@ const StaffCalendar: React.FC = () => {
             <Card>
               <CardHeader className="pb-4">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
                     <Button variant="outline" size="icon" onClick={goToPrevious}>
                       <ChevronLeft className="w-4 h-4" />
                     </Button>
@@ -341,28 +351,30 @@ const StaffCalendar: React.FC = () => {
                     <Button variant="outline" size="icon" onClick={goToNext}>
                       <ChevronRight className="w-4 h-4" />
                     </Button>
-                    <CardTitle className="text-lg ml-2">
+                    <CardTitle className="text-lg ml-2 truncate min-w-0" title={getHeaderTitle()}>
                       {getHeaderTitle()}
                     </CardTitle>
                   </div>
                   
                   {/* View Toggle */}
-                  <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as ViewMode)}>
-                    <TabsList>
-                      <TabsTrigger value="month" className="gap-1.5">
-                        <LayoutGrid className="w-4 h-4" />
-                        Month
-                      </TabsTrigger>
-                      <TabsTrigger value="week" className="gap-1.5">
-                        <Grid3X3 className="w-4 h-4" />
-                        Week
-                      </TabsTrigger>
-                      <TabsTrigger value="day" className="gap-1.5">
-                        <List className="w-4 h-4" />
-                        Day
-                      </TabsTrigger>
-                    </TabsList>
-                  </Tabs>
+                  <div className="flex-shrink-0">
+                    <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as ViewMode)}>
+                      <TabsList>
+                        <TabsTrigger value="month" className="gap-1.5">
+                          <LayoutGrid className="w-4 h-4" />
+                          Month
+                        </TabsTrigger>
+                        <TabsTrigger value="week" className="gap-1.5">
+                          <Grid3X3 className="w-4 h-4" />
+                          Week
+                        </TabsTrigger>
+                        <TabsTrigger value="day" className="gap-1.5">
+                          <List className="w-4 h-4" />
+                          Day
+                        </TabsTrigger>
+                      </TabsList>
+                    </Tabs>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
@@ -380,16 +392,16 @@ const StaffCalendar: React.FC = () => {
               <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2">
                   <CalendarIcon className="w-5 h-5" />
-                  Today's Schedule
+                  {format(selectedDate, 'EEEE')}
                 </CardTitle>
-                <CardDescription>{format(new Date(), 'EEEE, MMMM d')}</CardDescription>
+                <CardDescription>{format(selectedDate, 'MMMM d, yyyy')}</CardDescription>
               </CardHeader>
               <CardContent>
-                {todayEvents.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-4">No events today</p>
+                {selectedEvents.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">No events for this date</p>
                 ) : (
                   <div className="space-y-3">
-                    {todayEvents.map((event) => (
+                    {selectedEvents.map((event) => (
                       <div
                         key={event.id}
                         className="p-3 rounded-lg bg-muted/30 border border-border/50"

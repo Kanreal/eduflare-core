@@ -55,14 +55,14 @@ import NotFound from "./pages/NotFound";
 const queryClient = new QueryClient();
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <EduFlareProvider>
-        <ImpersonationProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Sonner />
-            <BrowserRouter>
+  <BrowserRouter>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <EduFlareProvider>
+          <ImpersonationProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Sonner />
               <ImpersonationBanner />
               <Routes>
                 {/* Public Routes */}
@@ -114,12 +114,12 @@ const App = () => (
                 {/* Catch-all */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
-            </BrowserRouter>
-          </TooltipProvider>
-        </ImpersonationProvider>
-      </EduFlareProvider>
-    </AuthProvider>
-  </QueryClientProvider>
+            </TooltipProvider>
+          </ImpersonationProvider>
+        </EduFlareProvider>
+      </AuthProvider>
+    </QueryClientProvider>
+  </BrowserRouter>
 );
 
 export default App;

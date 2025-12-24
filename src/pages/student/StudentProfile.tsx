@@ -2,7 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { User, Mail, Phone, MapPin, Calendar, FileText, Edit3 } from 'lucide-react';
 import { PortalLayout } from '@/components/layout/PortalLayout';
-import { mockStudent } from '@/lib/constants';
+import { mockStudent, studyGoalOptions, countryOptions } from '@/lib/constants';
 
 const StudentProfile: React.FC = () => {
   const student = mockStudent;
@@ -14,6 +14,8 @@ const StudentProfile: React.FC = () => {
     { label: 'Nationality', value: student.nationality || 'Not provided', icon: MapPin },
     { label: 'Date of Birth', value: student.dateOfBirth?.toLocaleDateString() || 'Not provided', icon: Calendar },
     { label: 'Passport Number', value: student.passportNumber || 'Not provided', icon: FileText },
+    { label: 'Study Goal', value: studyGoalOptions.find(o => o.value === (student as any).studyGoal)?.label || 'Not specified', icon: GraduationCap },
+    { label: 'Preferred Country', value: countryOptions.find(o => o.value === (student as any).preferredCountry)?.label || 'Not specified', icon: MapPin },
   ];
 
   return (

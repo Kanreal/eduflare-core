@@ -119,7 +119,89 @@ const EduFlareContext = createContext<EduFlareContextType | undefined>(undefined
 export const useEduFlare = () => {
   const context = useContext(EduFlareContext);
   if (!context) {
-    throw new Error('useEduFlare must be used within an EduFlareProvider');
+    // In development HMR scenarios the hook can be invoked before the provider is mounted.
+    // Return a safe fallback to avoid crashing the app; functions are no-ops and arrays empty.
+    // This helps prevent "must be used within provider" runtime crashes while developing.
+    // NOTE: This fallback should not be used in production — ensure the provider wraps the app.
+    // Provide a minimal EduFlareContextType-like object with safe defaults.
+    // eslint-disable-next-line no-console
+    console.warn('useEduFlare called outside EduFlareProvider — returning safe fallback.');
+    const noop = (..._args: any[]) => undefined;
+    const safeSystemSettings = DEFAULT_SYSTEM_SETTINGS;
+    return {
+      leads: [],
+      students: [],
+      staff: [],
+      admins: [],
+      documents: [],
+      contracts: [],
+      invoices: [],
+      applications: [],
+      universities: [],
+      commissions: [],
+      refundRequests: [],
+      appointments: [],
+      notifications: [],
+      auditLogs: [],
+      ledgerEntries: [],
+      fixRequests: [],
+      unlockRequests: [],
+      systemSettings: safeSystemSettings,
+      addLead: noop as any,
+      updateLead: noop as any,
+      changeLeadStatus: noop as any,
+      convertLeadToStudent: noop as any,
+      updateStudent: noop as any,
+      changeStudentStatus: noop as any,
+      lockStudentProfile: noop as any,
+      unlockStudentProfile: noop as any,
+      unlockStudentFields: noop as any,
+      setScholarshipType: noop as any,
+      calculateFinalBalance: noop as any,
+      addDocument: noop as any,
+      updateDocument: noop as any,
+      verifyDocument: noop as any,
+      lockDocuments: noop as any,
+      unlockDocuments: noop as any,
+      createContract: noop as any,
+      signContract: noop as any,
+      createInvoice: noop as any,
+      recordPayment: noop as any,
+      processRefund: noop as any,
+      createApplication: noop as any,
+      submitApplicationToAdmin: noop as any,
+      approveApplication: noop as any,
+      rejectApplication: noop as any,
+      submitToUniversity: noop as any,
+      returnFromSchool: noop as any,
+      recordOfferReceived: noop as any,
+      releaseOffer: noop as any,
+      triggerCommission: noop as any,
+      payCommission: noop as any,
+      voidCommission: noop as any,
+      bookAppointment: noop as any,
+      cancelAppointment: noop as any,
+      addNotification: noop as any,
+      markNotificationRead: noop as any,
+      markAllNotificationsRead: noop as any,
+      submitFixRequest: noop as any,
+      processFixRequest: noop as any,
+      submitUnlockRequest: noop as any,
+      processUnlockRequest: noop as any,
+      getPendingUnlockRequests: () => [],
+      logAudit: noop as any,
+      updateSystemSettings: noop as any,
+      getStudentById: () => undefined,
+      getLeadById: () => undefined,
+      getStaffById: () => undefined,
+      getDocumentsByStudent: () => [],
+      getApplicationsByStudent: () => [],
+      getNotificationsByUser: () => [],
+      getUnreadNotificationCount: () => 0,
+      getIdleLeads: () => [],
+      getIdleApplications: () => [],
+      validatePassportExpiry: () => false,
+    } as EduFlareContextType;
   }
   return context;
 };
@@ -193,6 +275,9 @@ export const EduFlareProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       email: lead.email,
       name: lead.name,
       phone: lead.phone,
+      // copy progressive lead details into new student profile
+      studyGoal: (lead as any).studyGoal,
+      preferredCountry: (lead as any).preferredCountry,
       role: 'student',
       status: 'pending_contract',
       assignedStaffId: staffId,

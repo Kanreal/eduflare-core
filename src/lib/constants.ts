@@ -312,3 +312,25 @@ export const mockTransactions = [
   { id: 'tx-2', type: 'commission' as const, amount: 750, description: 'Commission - Sarah Johnson', status: 'pending' as const, createdAt: new Date() },
   { id: 'tx-3', type: 'refund' as const, amount: 1000, description: 'Partial Refund - Emily Wilson', status: 'pending' as const, createdAt: new Date() },
 ];
+
+// Currency conversion rates (example rates)
+export const CURRENCY_RATES = {
+  TZS_TO_USD: 0.0004, // 1 TZS = 0.0004 USD
+  USD_TO_TZS: 2500,   // 1 USD = 2500 TZS
+  EUR_TO_USD: 1.08,   // 1 EUR = 1.08 USD
+};
+
+export const formatCurrency = (amount: number, currency: string, targetCurrency: 'USD' = 'USD') => {
+  if (currency === targetCurrency) {
+    return `$${amount.toLocaleString()}`;
+  }
+
+  let convertedAmount = amount;
+  if (currency === 'TZS') {
+    convertedAmount = amount * CURRENCY_RATES.TZS_TO_USD;
+  } else if (currency === 'EUR') {
+    convertedAmount = amount * CURRENCY_RATES.EUR_TO_USD;
+  }
+
+  return `$${convertedAmount.toLocaleString()} (${currency} ${amount.toLocaleString()})`;
+};

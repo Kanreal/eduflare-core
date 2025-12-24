@@ -1,0 +1,165 @@
+You are a senior product engineer + solution architect. Build a production-ready web app called:
+
+EduFlare Management System (End-to-End CRM, Application Management, and Financial Control)
+
+Tech Stack (non-negotiable):
+- React
+- TailwindCSS + shadcn/ui (clean modern professional UI)
+- Database: Superbase
+- File storage: Supabase Storage 
+- PDF generation: server-side (Service Agreement contract PDF)
+- ZIP download for Admin: server-side bulk “Download All as ZIP”
+- Strong RBAC middleware for Admin / Staff / Student
+- Full audit logging on every write action + every workflow override
+
+Core Product Rules (must match spec exactly):
+1) Progressive Data Collection:
+- At Lead stage capture only: name, contact, basic interest eg.Study Goal(Diploma, Bachelor, Masters), Preferred Country(China, India, Turkey), Message (Optional)"here they can explain all the fields that are not covered or anything.
+- Detailed “Master Application Profile” is collected ONLY during Application Creation.
+
+2) Strict Permission Control:
+- Staff manages data accuracy & operations, but cannot view total revenue.
+- Admin controls pricing, approvals, refunds, final submissions, offer release.
+- Students are READ-ONLY on forms and documents:
+  - Students can view progress, sign contracts, pay fees, book appointments.
+  - Students cannot upload files or edit their profile (only “Request Fix” button).
+
+3) Locking Mechanisms (critical):
+- When Staff clicks “Submit to Admin”, the Application Profile becomes READ-ONLY for Staff.
+- New update: When Admin returns and clicks [Mark as Submitted], this locks the files so Staff can no longer edit/delete them.
+- Staff cannot delete files after an application is submitted to Admin.
+- If Admin rejects application: it returns to Staff and unlocks editing.
+- If School returns request: Admin can temporarily unlock ONLY specific fields for Staff (field-level unlock).
+
+4) Workflow Phases:
+Phase A: Lead Acquisition
+- Trigger: Website “Book Consultation” (public) OR manual Staff entry.
+- Status: Lead - New
+
+Phase B: Conversion (“Opening the Book”)
+- Action: Staff converts Lead to Student.
+- Financial event: Student pays Opening Book / Consultation Fee.
+- System creates Student user account with temporary password.
+- Staff captures screening: nationality, age, grade.
+- Status: Student - Pending Contract
+
+Phase C: Contract & Deposit
+- Staff generates Study Abroad Service Agreement (PDF).
+- Student signs digitally.
+- Staff records $750 USD Basic Service Deposit.
+- System flags $500 as Non-Refundable immediately.
+- Commission trigger: Staff commission becomes “Pending” only when:
+  - Status = Contract Signed AND Deposit Paid ($750)
+- Status: Active - Profile Building
+
+Phase D: Application Creation (Data & Document Phase)
+- Staff fills Master Application Profile:
+  - education, family, health, criminal record, etc.
+- Documents: student provides physically/digitally, Staff uploads.
+- Passport expiry rule: if expiry < 6 months, block submission.
+- Staff submits to Admin -> locks profile (read-only for staff).
+
+Phase E: Application Processing (2+3 Strategy)
+- Staff selects 2 universities first.
+- Admin Review:
+  - Reject -> unlock and return to staff
+  - Approve -> Admin marks Submitted to University (still locked)
+- Admin downloads files as ZIP and submits externally on university portal.
+- Feedback loop: if school requests more info, Admin marks “Returned by School” and unlocks required fields only.
+
+Phase F: Offer, Financials & Release
+- Admin uploads Admission Letter/JW202.
+- Visibility rule: Offer file is HIDDEN from Student when status = Offer Received.
+- Admin selects Scholarship Type:
+  - Self-Support, Partial B, Partial A, Full B, Full A
+- Auto-calc Final Balance:
+  Final Balance = (Scholarship Fee) - (Initial Deposit - $250 Credit)
+- Student pays balance; Admin logs payment.
+- System action: Offer letter becomes UNHIDDEN in Student Portal.
+
+Financial Logic (Pricing Engine):
+- Admin manages pricing table (config changes apply to NEW contracts only).
+Pricing table:
+Scholarship Type | Total Service Fee | Deposit Paid | Credit Applied | Client Pays
+Self-Support | 1000 | 750 | 500 | 500
+Partial B | 1250 | 750 | 500 | 750
+Partial A | 1500 | 750 | 500 | 1000
+Full B | 1750 | 750 | 500 | 1250
+Full A | 2000 | 750 | 500 | 1500
+
+Commission System:
+- Amount: 20,000 TZS per student
+- Trigger: only when Contract Signed AND Deposit Paid (750 USD)
+- Clawback:
+  - If cancellation before payout => void commission
+  - If after payout => create negative entry -20,000 TZS for next payroll
+
+Refund Logic:
+- University rejection => refund = 750 - 500 retained costs = 250
+- Student withdrawal personal => refund = 0
+- Admin approves refunds only.
+
+Sitemap / Pages (must implement):
+A) Public & Auth:
+- Login, Forgot Password, Reset Password
+- Staff/Admin secure login gate
+- Public “Book Consultation” form -> creates Lead (Lead - New)
+
+B) Student Portal (Read-only):
+1. Dashboard: progress bar step 1-5, alerts (“Contract Waiting”), upcoming appointments
+2. My Profile: read-only, “Request Fix” button
+3. My Documents: vault grid, no upload, status badges verified/error
+4. App Tracker: list of 2+3 universities + status
+5. Financials: Invoices + Contracts (view & digitally sign)
+6. Appointments: booking calendar for “Document Submission” or “Consultation”
+7. My Offers: hidden until balance paid; download Admission & JW202
+8. Settings: password/phone
+
+C) Staff Portal:
+1. Dashboard: lead decay alerts (>7d), returned apps alerts, My Earnings widget (pending + current month)
+2. Lead Manager: lead list New/Hot/Cold, Add Lead, Convert to Student
+3. Student Directory: list active students, search/filter by status
+4. Student Detail: edit bio-data; docs upload/delete (until locked); apps 2+3 builder; Submit to Admin (locks)
+5. Contract Manager: list pending/signed; generate contract
+6. University List: read-only partner list
+7. Calendar: personal schedule
+8. My Profile: history + commission tab
+
+D) Admin Portal:
+1. Dashboard: total revenue, active students, success rate
+2. App Queue: pending admin review
+3. App Detail View: doc preview/download; Download All ZIP; copy profile summary; actions submit/reject/upload offer; Mark as Submitted locks files
+4. Financial Hub: global transactions; refunds approval queue; commissions payroll view
+5. Staff Manager: create/deactivate staff; reset passwords
+6. University Manager: add/edit universities/majors
+7. Settings: price list + commission amount
+8. Audit Logs: who/what/when for all changes
+
+Utility Features (must include):
+- Notification bell for Staff/Students for appointment/status changes
+- Admin impersonation mode “View as Student”
+- Idle alerts:
+  - Staff: lead untouched > 7 days
+  - Admin: application pending > 3 days
+- Visa warning: block submission if passport expiry < 6 months
+- Audit log for all updates, file actions, status changes, overrides
+
+Implementation Requirements:
+- Provide: database schema (Prisma models), API routes/server actions, RBAC middleware, and UI pages.
+- Include status enums for Lead/Student/Application with a strict state machine. Prevent invalid transitions.
+- Ensure financial events create immutable ledger entries (no deleting payments; only reversal entries).
+- Ensure file permissions and locks are enforced at server level (not just UI).
+- Provide seed data for roles, scholarship types, sample universities.
+
+Deliverables:
+1) Project folder structure
+3) RBAC strategy and middleware
+4) Server actions/API routes for each major workflow
+5) UI pages for Student/Staff/Admin portals (shadcn/ui, clean modern)
+6) Audit log implementation + examples
+7) Pricing engine + final balance calculation
+8) ZIP download implementation approach
+9) Contract PDF generator approach
+10) Checklist mapping every spec item to implemented code/modules
+
+Build it as if it will go live for a real consultancy. No placeholders that skip critical logic.

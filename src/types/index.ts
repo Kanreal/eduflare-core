@@ -222,11 +222,12 @@ export interface Invoice {
   studentName: string;
   type: PaymentType;
   amount: number;
+  currency: 'TZS' | 'USD' | 'EUR';
   status: InvoiceStatus;
   dueDate: Date;
   paidAt?: Date;
   description: string;
-  
+
   // For immutable ledger
   isReversal: boolean;
   reversesInvoiceId?: string;

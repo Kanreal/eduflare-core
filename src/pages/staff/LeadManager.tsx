@@ -18,6 +18,7 @@ import { PortalLayout } from '@/components/layout/PortalLayout';
 import { StatusBadge, Avatar, EmptyState } from '@/components/ui/EduFlareUI';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -43,7 +44,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useEduFlare } from '@/contexts/EduFlareContext';
+import { studyGoalOptions, countryOptions } from '@/lib/constants';
 import { LeadStatus } from '@/types';
+import { useToast } from '@/hooks/use-toast';
 
 // Local lead type for this component's mock data
 interface LocalLead {
@@ -69,7 +72,52 @@ const getStatusVariant = (status: string): 'primary' | 'error' | 'muted' | 'succ
 
 const LeadManager: React.FC = () => {
   const navigate = useNavigate();
-  const { leads, convertLeadToStudent, staff, logAudit } = useEduFlare();
+  const { leads, convertLeadToStudent, staff, logAudit, addLead, createInvoice, addDocument } = useEduFlare();
+  const { toast } = useToast();
+  const { role } = (() => {
+    try {
+      // lazy import to avoid circular issues
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const auth = require('@/contexts/AuthContext') as any;
+      return auth.useAuth();
+    } catch {
+      return { role: null };
+    }
+  })();
+  const [convAmount, setConvAmount] = useState<number>(50000);
+  const [convCurrency, setConvCurrency] = useState<'TZS' | 'USD' | 'EUR'>('TZS');
+  const [convReceiptFile, setConvReceiptFile] = useState<File | null>(null);
+  const [convErrors, setConvErrors] = useState<Record<string,string>>({});
+  const [tempPasswordToShow, setTempPasswordToShow] = useState<string | null>(null);
+  const [convertedStudentId, setConvertedStudentId] = useState<string | null>(null);
+  const [newLeadForm, setNewLeadForm] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    source: 'website',
+    studyGoal: '',
+    preferredCountry: '',
+    message: '',
+  });
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+
+  const validateNewLead = () => {
+    const errors: Record<string, string> = {};
+    if (!newLeadForm.name.trim()) errors.name = 'Full name is required';
+    if (!newLeadForm.email.trim()) {
+      errors.email = 'Email is required';
+    } else {
+      // simple email regex
+      const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!re.test(newLeadForm.email)) errors.email = 'Enter a valid email';
+    }
+    if (!newLeadForm.phone.trim()) errors.phone = 'Phone is required';
+    if (!newLeadForm.studyGoal) errors.studyGoal = 'Study goal is required';
+    if (!newLeadForm.preferredCountry) errors.preferredCountry = 'Preferred country is required';
+    if (!newLeadForm.source) errors.source = 'Source is required';
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -96,22 +144,67 @@ const LeadManager: React.FC = () => {
     if (!selectedLead) return;
     const assignedStaffId = selectedLead.assignedTo || staff[0]?.id;
     if (assignedStaffId) {
+      // validate payment & receipt
+      const errors: Record<string,string> = {};
+      if (!convAmount || convAmount <= 0) errors.amount = 'Payment amount is required';
+      if (!convReceiptFile) errors.receipt = 'Payment receipt is required';
+      if (Object.keys(errors).length > 0) {
+        setConvErrors(errors);
+        return;
+      }
+
       const newStudent = convertLeadToStudent(selectedLead.id, assignedStaffId);
       if (newStudent) {
+        // Record invoice/payment
+        createInvoice({
+          studentId: newStudent.id,
+          studentName: newStudent.name,
+          type: 'opening_book',
+          amount: convAmount,
+          currency: convCurrency,
+          status: 'paid',
+          dueDate: new Date(),
+          paidAt: new Date(),
+          description: 'Opening Book / Consultation Fee',
+          isReversal: false,
+        });
+
+        // Store receipt as document (mock fileUrl using blob URL)
+        const fileUrl = window.URL.createObjectURL(convReceiptFile as File);
+        addDocument({
+          name: `Opening Book Receipt - ${newStudent.name}`,
+          type: 'other',
+          status: 'verified',
+          uploadedAt: new Date(),
+          verifiedAt: new Date(),
+          studentId: newStudent.id,
+          isLocked: false,
+          isHidden: false,
+          fileUrl,
+        });
+
         logAudit({
           userId: 'current-user',
           userName: 'Current User',
           userRole: 'staff',
           action: 'Lead Converted',
-          details: `Converted lead ${selectedLead.name} to student`,
+          details: `Converted lead ${selectedLead.name} to student; Opening Book paid ${convAmount}`,
           entityType: 'lead',
           entityId: selectedLead.id,
           isOverride: false,
         });
-        navigate(`/staff/students/${newStudent.id}`);
+
+        // Show temporary password to staff (generated by context)
+        setTempPasswordToShow((newStudent as any).tempPassword || null);
+        setConvertedStudentId(newStudent.id);
+        // reset conv form (keep dialog open so staff can copy password)
+        setConvAmount(50000);
+        setConvCurrency('TZS');
+        setConvReceiptFile(null);
+        setConvErrors({});
       }
     }
-    setIsConvertDialogOpen(false);
+    // do not auto-close — show temp password panel
   };
 
   return (
@@ -130,30 +223,41 @@ const LeadManager: React.FC = () => {
                 Add Lead
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
+          <DialogContent className="w-full max-w-md p-4 sm:p-6">
               <DialogHeader>
                 <DialogTitle>Add New Lead</DialogTitle>
                 <DialogDescription>
                   Enter the contact information for your new lead.
                 </DialogDescription>
               </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Full Name</Label>
-                  <Input id="name" placeholder="Enter full name" />
+            <div className="py-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="col-span-1">
+                  <Label htmlFor="name" className="text-sm">Full Name</Label>
+                  <Input
+                    id="name"
+                    placeholder="Enter full name"
+                    value={newLeadForm.name}
+                    onChange={(e) => setNewLeadForm(f => ({ ...f, name: e.target.value }))}
+                    className={`h-9 ${formErrors.name ? 'border-error focus:ring-error' : ''}`}
+                    aria-invalid={!!formErrors.name}
+                  />
+                  {formErrors.name && <p className="text-xs text-error mt-1">Enter full name</p>}
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input id="email" type="email" placeholder="Enter email address" />
+                <div className="col-span-1">
+                  <Label htmlFor="email" className="text-sm">Email</Label>
+                <Input id="email" type="email" placeholder="Enter email address" value={newLeadForm.email} onChange={(e) => setNewLeadForm(f => ({ ...f, email: e.target.value }))} className="h-9" />
+                {formErrors.email && <p className="text-xs text-error mt-1">{formErrors.email}</p>}
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Phone</Label>
-                  <Input id="phone" placeholder="Enter phone number" />
+                <div className="col-span-1">
+                  <Label htmlFor="phone" className="text-sm">Phone</Label>
+                  <Input id="phone" placeholder="Enter phone number" value={newLeadForm.phone} onChange={(e) => setNewLeadForm(f => ({ ...f, phone: e.target.value }))} className="h-9" />
+                  {formErrors.phone && <p className="text-xs text-error mt-1">{formErrors.phone}</p>}
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="source">Source</Label>
-                  <Select>
-                    <SelectTrigger>
+                <div className="col-span-1">
+                  <Label htmlFor="source" className="text-sm">Source</Label>
+                  <Select value={newLeadForm.source} onValueChange={(v) => setNewLeadForm(f => ({ ...f, source: v }))}>
+                    <SelectTrigger className="h-9">
                       <SelectValue placeholder="Select source" />
                     </SelectTrigger>
                     <SelectContent>
@@ -165,14 +269,70 @@ const LeadManager: React.FC = () => {
                     </SelectContent>
                   </Select>
                 </div>
+                <div className="col-span-1">
+                  <Label htmlFor="studyGoal" className="text-sm">Study Goal</Label>
+                  <Select value={newLeadForm.studyGoal} onValueChange={(v) => setNewLeadForm(f => ({ ...f, studyGoal: v }))}>
+                    <SelectTrigger className="h-9">
+                      <SelectValue placeholder="Select goal" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {studyGoalOptions.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  {formErrors.studyGoal && <p className="text-xs text-error mt-1">{formErrors.studyGoal}</p>}
+                </div>
+                <div className="col-span-1">
+                  <Label htmlFor="preferredCountry" className="text-sm">Preferred Country</Label>
+                  <Select value={newLeadForm.preferredCountry} onValueChange={(v) => setNewLeadForm(f => ({ ...f, preferredCountry: v }))}>
+                    <SelectTrigger className="h-9">
+                      <SelectValue placeholder="Select country" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {countryOptions.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  {formErrors.preferredCountry && <p className="text-xs text-error mt-1">{formErrors.preferredCountry}</p>}
+                </div>
+                <div className="col-span-1 sm:col-span-2">
+                  <Label htmlFor="message" className="text-sm">Initial Message</Label>
+                  <Textarea id="message" placeholder="Initial message..." value={newLeadForm.message} onChange={(e) => setNewLeadForm(f => ({ ...f, message: e.target.value }))} rows={3} className="resize-none" />
+                </div>
               </div>
+            </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={() => setIsAddDialogOpen(false)}>
-                  Add Lead
-                </Button>
+              <Button variant="outline" onClick={() => { setIsAddDialogOpen(false); setNewLeadForm({ name: '', email: '', phone: '', source: 'website', studyGoal: '', preferredCountry: '', message: '' }); }}>
+                Cancel
+              </Button>
+              <Button onClick={() => {
+                if (!validateNewLead()) return;
+                const lead = {
+                  name: newLeadForm.name.trim(),
+                  email: newLeadForm.email.trim(),
+                  phone: newLeadForm.phone.trim(),
+                  source: newLeadForm.source as any,
+                  studyGoal: newLeadForm.studyGoal as any,
+                  preferredCountry: newLeadForm.preferredCountry as any,
+                  message: newLeadForm.message.trim(),
+                  status: 'new' as any,
+                };
+                const created = addLead(lead);
+                logAudit({
+                  userId: 'current-user',
+                  userName: 'Current User',
+                  userRole: 'staff',
+                  action: 'Lead Created',
+                  details: `Created lead ${lead.name}`,
+                  entityType: 'lead',
+                  entityId: created.id,
+                  isOverride: false,
+                });
+                setIsAddDialogOpen(false);
+                setNewLeadForm({ name: '', email: '', phone: '', source: 'website', studyGoal: '', preferredCountry: '', message: '' });
+                setFormErrors({});
+                navigate(`/staff/leads/${created.id}`);
+              }}>
+                Add Lead
+              </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -310,10 +470,12 @@ const LeadManager: React.FC = () => {
                                 <Eye className="w-4 h-4 mr-2" />
                                 View Details
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleViewLead(lead.id)}>
-                                <Edit className="w-4 h-4 mr-2" />
-                                Edit Lead
-                              </DropdownMenuItem>
+                              {lead.status !== 'converted' && (
+                                <DropdownMenuItem onClick={() => handleViewLead(lead.id)}>
+                                  <Edit className="w-4 h-4 mr-2" />
+                                  Edit Lead
+                                </DropdownMenuItem>
+                              )}
                               <DropdownMenuSeparator />
                               <DropdownMenuItem 
                                 onClick={() => handleConvertToStudent(lead as LocalLead)}
@@ -322,7 +484,9 @@ const LeadManager: React.FC = () => {
                                 <UserPlus className="w-4 h-4 mr-2" />
                                 Convert to Student
                               </DropdownMenuItem>
-                              <DropdownMenuItem className="text-error">Mark as Lost</DropdownMenuItem>
+                              {lead.status !== 'converted' && (
+                                <DropdownMenuItem className="text-error">Mark as Lost</DropdownMenuItem>
+                              )}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>
@@ -367,15 +531,125 @@ const LeadManager: React.FC = () => {
                   </div>
                 </div>
               </div>
+
+              {/* Conversion payment form */}
+              {!tempPasswordToShow && (
+                <div className="mt-4 grid grid-cols-1 gap-3">
+                  <div className="grid grid-cols-3 gap-2 items-center">
+                    <Label className="text-sm">Payment Amount</Label>
+                    <input
+                      type="number"
+                      className={`h-9 w-full rounded-md border px-2 col-span-1 ${convErrors.amount ? 'border-error' : 'border-border'}`}
+                      value={convAmount}
+                      onChange={(e) => setConvAmount(Number(e.target.value))}
+                      disabled={role !== 'admin'}
+                      aria-invalid={!!convErrors.amount}
+                    />
+                    <Select value={convCurrency} onValueChange={(v: 'TZS' | 'USD' | 'EUR') => setConvCurrency(v)}>
+                      <SelectTrigger className="h-9">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="TZS">TZS</SelectItem>
+                        <SelectItem value="USD">USD</SelectItem>
+                        <SelectItem value="EUR">EUR</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {convErrors.amount && <p className="text-xs text-error">{convErrors.amount}</p>}
+                  <p className="text-sm text-muted-foreground mt-1">Formatted: <strong>{convCurrency} {convAmount.toLocaleString('en-US')}</strong></p>
+
+                  <div className="grid grid-cols-1 gap-1">
+                    <Label className="text-sm">Payment Receipt</Label>
+                    <div className="flex items-center gap-3">
+                      {!convReceiptFile ? (
+                        <>
+                          <label
+                            htmlFor="conv-receipt"
+                            className="flex items-center gap-3 rounded-lg border border-border/60 bg-muted/10 px-3 py-2 cursor-pointer hover:border-primary transition-colors min-w-0 flex-1"
+                          >
+                            <svg className="h-5 w-5 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                            </svg>
+                            <div className="text-sm text-muted-foreground truncate">
+                              Upload receipt (image or PDF)
+                            </div>
+                          </label>
+                          <input
+                            id="conv-receipt"
+                            type="file"
+                            accept="image/*,application/pdf"
+                            onChange={(e) => setConvReceiptFile(e.target.files ? e.target.files[0] : null)}
+                            className="hidden"
+                          />
+                        </>
+                      ) : (
+                        <>
+                          <div className="flex items-center gap-3 rounded-lg border border-border/60 bg-muted/10 px-3 py-2 min-w-0 flex-1">
+                            <div className="text-sm text-foreground truncate font-medium">{convReceiptFile.name}</div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setConvReceiptFile(null)}
+                            className="text-xs text-error underline"
+                          >
+                            Remove
+                          </button>
+                        </>
+                      )}
+                    </div>
+                    {convErrors.receipt && <p className="text-xs text-error">{convErrors.receipt}</p>}
+                  </div>
+                </div>
+              )}
+
+              {/* Temporary password display after conversion */}
+              {tempPasswordToShow && (
+                <div className="mt-4 rounded-md bg-primary/10 p-3 text-sm">
+                  <p className="mb-2"><strong>Temporary password:</strong></p>
+                  <div className="flex items-center gap-2">
+                          <code className="font-mono text-lg">{tempPasswordToShow}</code>
+                    <Button size="sm" variant="outline" onClick={async () => {
+                      try {
+                        await navigator.clipboard?.writeText(tempPasswordToShow || '');
+                        toast({
+                          title: 'Copied',
+                          description: 'Temporary password copied to clipboard',
+                        });
+                      } catch {
+                        toast({
+                          title: 'Copy failed',
+                          description: 'Could not copy to clipboard',
+                          variant: 'destructive',
+                        });
+                      }
+                    }}>Copy</Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">This password is shown once — copy and share it securely with the student. The student must change it at first login.</p>
+                </div>
+              )}
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsConvertDialogOpen(false)}>
-                Cancel
+              <Button variant="outline" onClick={() => {
+                // if temp password shown, close and navigate; otherwise cancel
+                if (tempPasswordToShow && convertedStudentId) {
+                  setIsConvertDialogOpen(false);
+                  const sid = convertedStudentId;
+                  setTempPasswordToShow(null);
+                  setConvertedStudentId(null);
+                  navigate(`/staff/students/${sid}`);
+                } else {
+                  setIsConvertDialogOpen(false);
+                }
+              }}>
+                {tempPasswordToShow ? 'Done' : 'Cancel'}
               </Button>
-              <Button onClick={confirmConversion} className="gap-2">
-                <UserPlus className="w-4 h-4" />
-                Convert to Student
-              </Button>
+              {!tempPasswordToShow && (
+                <Button onClick={confirmConversion} className="gap-2">
+                  <UserPlus className="w-4 h-4" />
+                  Convert to Student
+                </Button>
+              )}
             </DialogFooter>
           </DialogContent>
         </Dialog>

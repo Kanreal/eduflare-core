@@ -1,10 +1,10 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { 
-  DollarSign, 
-  Users, 
-  TrendingUp, 
-  Clock, 
+import {
+  DollarSign,
+  Users,
+  TrendingUp,
+  Clock,
   CheckCircle,
   AlertCircle,
   ArrowRight,
@@ -12,6 +12,7 @@ import {
   FileText,
   BarChart3,
   Unlock,
+  Target,
 } from 'lucide-react';
 import { PortalLayout } from '@/components/layout/PortalLayout';
 import { KPICard, StatusBadge, Avatar } from '@/components/ui/EduFlareUI';
@@ -25,15 +26,32 @@ import { useAuth } from '@/contexts/AuthContext';
 const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { 
-    getPendingUnlockRequests, 
-    processUnlockRequest, 
+  const {
+    getPendingUnlockRequests,
+    processUnlockRequest,
     unlockRequests,
     applications,
-    students 
+    students,
+    leads
   } = useEduFlare();
 
   const pendingUnlockRequests = getPendingUnlockRequests();
+
+  // Lead Statistics
+  const currentMonth = new Date().getMonth();
+  const currentYear = new Date().getFullYear();
+  const leadsThisMonth = leads.filter(lead => {
+    const leadDate = new Date(lead.createdAt);
+    return leadDate.getMonth() === currentMonth && leadDate.getFullYear() === currentYear;
+  });
+
+  const leadStats = {
+    totalLeads: leads.length,
+    leadsThisMonth: leadsThisMonth.length,
+    hotLeads: leads.filter(l => l.status === 'hot').length,
+    newLeads: leads.filter(l => l.status === 'new').length,
+    convertedLeads: leads.filter(l => l.status === 'converted').length,
+  };
 
   // Get pending applications from context
   const pendingApplications = applications
@@ -133,6 +151,40 @@ const AdminDashboard: React.FC = () => {
             value={applications.filter(a => a.status === 'pending_admin').length.toString()}
             icon={Clock}
             subtitle="Requires review"
+          />
+        </div>
+
+        {/* Lead Statistics */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          <KPICard
+            title="Total Leads"
+            value={leadStats.totalLeads.toString()}
+            icon={Users}
+            trend={{ value: 12, isPositive: true }}
+          />
+          <KPICard
+            title="This Month"
+            value={leadStats.leadsThisMonth.toString()}
+            icon={TrendingUp}
+            trend={{ value: 8, isPositive: true }}
+          />
+          <KPICard
+            title="New Leads"
+            value={leadStats.newLeads.toString()}
+            icon={Target}
+            variant="primary"
+          />
+          <KPICard
+            title="Hot Leads"
+            value={leadStats.hotLeads.toString()}
+            icon={TrendingUp}
+            variant="primary"
+          />
+          <KPICard
+            title="Converted"
+            value={leadStats.convertedLeads.toString()}
+            icon={CheckCircle}
+            variant="success"
           />
         </div>
 
