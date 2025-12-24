@@ -13,6 +13,13 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowe
   const { isImpersonating, impersonatedUser, impersonationType } = useImpersonation();
   const location = useLocation();
 
+  // If auth context is not yet available (during fallback), show loading or return null
+  // This prevents premature redirects during HMR or component initialization
+  if (!isAuthenticated && actualRole === null) {
+    // Return null to avoid rendering anything until auth state is determined
+    return null;
+  }
+
   // Not authenticated - redirect to appropriate login
   if (!isAuthenticated || !actualRole) {
     const isStudentRoute = location.pathname.startsWith('/student');

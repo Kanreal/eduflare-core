@@ -18,7 +18,20 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    // In development HMR scenarios the hook can be invoked before the provider is mounted.
+    // Return a safe fallback to avoid crashing the app.
+    // This helps prevent "must be used within provider" runtime crashes while developing.
+    // NOTE: This fallback should not be used in production — ensure the provider wraps the app.
+    // eslint-disable-next-line no-console
+    console.warn('useAuth called outside AuthProvider — returning safe fallback.');
+    return {
+      user: null,
+      role: null,
+      isAuthenticated: false,
+      login: async () => false,
+      logout: () => {},
+      switchRole: () => {},
+    };
   }
   return context;
 };
