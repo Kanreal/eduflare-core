@@ -33,6 +33,7 @@ import {
 } from '@/components/ui/select';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
+import { StaffImpersonationButton } from '@/components/AdminImpersonation';
 
 const mockStaffMembers = [
   { 
@@ -258,6 +259,16 @@ const StaffManager: React.FC = () => {
                     </div>
                     <div className="text-xs text-muted-foreground">
                       Joined {format(staff.createdAt, 'MMM d, yyyy')}
+                    </div>
+                    <div className="pt-3">
+                      <StaffImpersonationButton
+                        staff={{
+                          id: staff.id,
+                          name: staff.name,
+                          email: staff.email,
+                        }}
+                        className="w-full"
+                      />
                     </div>
                   </div>
                 </CardContent>

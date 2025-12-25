@@ -141,6 +141,50 @@ export const AdminImpersonation: React.FC<AdminImpersonationProps> = ({ classNam
   );
 };
 
+// Component for impersonating a specific staff member from staff management
+interface StaffImpersonationButtonProps {
+  staff: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  className?: string;
+}
+
+export const StaffImpersonationButton: React.FC<StaffImpersonationButtonProps> = ({
+  staff,
+  className,
+}) => {
+  const { role, user } = useAuth();
+  const { startImpersonation, isImpersonating } = useImpersonation();
+  const navigate = useNavigate();
+
+  // Only show for admins when not already impersonating
+  if (role !== 'admin' || isImpersonating) return null;
+
+  const handleImpersonate = () => {
+    startImpersonation(
+      { id: staff.id, name: staff.name, email: staff.email, role: 'staff' },
+      'staff',
+      user?.id || 'admin-unknown',
+      user?.name || 'Admin'
+    );
+    navigate('/staff/dashboard');
+  };
+
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={handleImpersonate}
+      className={cn('gap-2 border-warning/30 text-warning hover:bg-warning/10', className)}
+    >
+      <Eye className="w-4 h-4" />
+      View as Staff
+    </Button>
+  );
+};
+
 // Component for impersonating a specific student from their detail page
 interface StudentImpersonationButtonProps {
   student: {

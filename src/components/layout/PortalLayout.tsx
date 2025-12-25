@@ -14,7 +14,6 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { Avatar } from '@/components/ui/EduFlareUI';
 import { NotificationBell } from '@/components/NotificationBell';
-import { AdminImpersonation } from '@/components/AdminImpersonation';
 import { 
   studentNavItems, 
   staffNavItems, 
@@ -317,11 +316,6 @@ export const PortalLayout: React.FC<PortalLayoutProps> = ({ children, portal }) 
 
             {/* Right */}
             <div className="flex items-center gap-2">
-              {/* Admin Impersonation */}
-              {role === 'admin' && (
-                <AdminImpersonation />
-              )}
-
               {/* Notifications */}
               <NotificationBell />
 
