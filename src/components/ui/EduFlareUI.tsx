@@ -273,7 +273,7 @@ export const ProgressStepper: React.FC<ProgressStepperProps> = ({
 export interface DocumentCardProps {
   name: string;
   type: string;
-  status: 'pending' | 'verified' | 'error' | 'locked';
+  status: 'pending' | 'verified' | 'error' | 'locked' | 'action_required';
   uploadedAt?: Date;
   onView?: () => void;
   onDownload?: () => void;
@@ -291,6 +291,7 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({
     pending: 'warning',
     verified: 'success',
     error: 'error',
+    action_required: 'error',
     locked: 'muted',
   } as const;
 
@@ -298,6 +299,7 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({
     pending: 'Pending Review',
     verified: 'Verified',
     error: 'Action Required',
+    action_required: 'Action Required',
     locked: 'Locked',
   };
 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ChevronLeft, 
@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
+import { useEffectiveUser } from '@/hooks/useEffectiveUser';
 import { Avatar } from '@/components/ui/EduFlareUI';
 import { NotificationBell } from '@/components/NotificationBell';
 import { 
@@ -56,7 +57,16 @@ export const PortalLayout: React.FC<PortalLayoutProps> = ({ children, portal }) 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
   const { user, logout, role } = useAuth();
+  const { effectiveUser, isImpersonating } = useEffectiveUser();
+
+  const handleLogout = () => {
+    logout(); // Clear authentication state
+    // Redirect to appropriate login page
+    const loginPath = portal === 'student' ? '/login/student' : '/login/internal';
+    navigate(loginPath, { replace: true });
+  };
 
   const navItems = getNavItems(portal);
   const portalTitle = getPortalTitle(portal);
@@ -322,12 +332,12 @@ export const PortalLayout: React.FC<PortalLayoutProps> = ({ children, portal }) 
               {/* User Menu */}
               <div className="flex items-center gap-3 pl-3 border-l border-border ml-2">
                 <div className="hidden sm:block text-right">
-                  <p className="text-sm font-semibold text-foreground">{user?.name || 'User'}</p>
-                  <p className="text-xs text-muted-foreground capitalize">{portal}</p>
+                <p className="text-sm font-semibold text-foreground">{(isImpersonating ? effectiveUser?.name : user?.name) || 'User'}</p>
+                <p className="text-xs text-muted-foreground capitalize">{portal}</p>
                 </div>
-                <Avatar name={user?.name || 'U'} size="sm" />
+                <Avatar name={(isImpersonating ? effectiveUser?.name : user?.name) || 'U'} size="sm" />
                 <button
-                  onClick={logout}
+                  onClick={handleLogout}
                   className="p-2 rounded-xl text-muted-foreground hover:bg-error/10 hover:text-error transition-colors"
                   title="Logout"
                 >

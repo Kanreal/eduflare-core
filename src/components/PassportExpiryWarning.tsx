@@ -17,11 +17,11 @@ export const PassportExpiryWarning: React.FC<PassportExpiryWarningProps> = ({
   showAsBlock = false,
   className,
 }) => {
-  if (!expiryDate) {
+  if (!expiryDate || isNaN(expiryDate.getTime())) {
     return (
       <div className={cn('flex items-center gap-2 text-warning', className)}>
         <AlertTriangle className="w-4 h-4" />
-        <span className="text-sm">Passport expiry date not set</span>
+        <span className="text-sm">Passport expiry date not set or invalid</span>
       </div>
     );
   }
@@ -115,8 +115,8 @@ export const PassportExpiryWarning: React.FC<PassportExpiryWarningProps> = ({
 
 // Helper hook for validation
 export const usePassportValidation = (expiryDate: Date | undefined, minimumMonths: number = 6) => {
-  if (!expiryDate) return { isValid: false, message: 'Passport expiry not set' };
-  
+  if (!expiryDate || isNaN(expiryDate.getTime())) return { isValid: false, message: 'Passport expiry not set or invalid' };
+
   const monthsUntilExpiry = differenceInMonths(expiryDate, new Date());
   const isExpired = expiryDate < new Date();
   const isNearExpiry = monthsUntilExpiry < minimumMonths;

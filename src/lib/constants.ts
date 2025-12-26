@@ -254,18 +254,19 @@ export const mockAdmin = {
 
 // Additional mock data exports for backward compatibility
 export const mockDocuments = [
-  { id: 'doc-1', name: 'Passport Copy', type: 'identity', status: 'verified' as const, uploadedAt: new Date(), studentId: 'student-1' },
-  { id: 'doc-2', name: 'Academic Transcript', type: 'academic', status: 'verified' as const, uploadedAt: new Date(), studentId: 'student-1' },
-  { id: 'doc-3', name: 'English Certificate', type: 'language', status: 'pending' as const, uploadedAt: new Date(), studentId: 'student-1' },
-  { id: 'doc-4', name: 'Bank Statement', type: 'financial', status: 'error' as const, uploadedAt: new Date(), studentId: 'student-1' },
-  { id: 'doc-5', name: 'Recommendation Letter', type: 'supporting', status: 'locked' as const, studentId: 'student-1' },
-  { id: 'doc-6', name: 'Personal Statement', type: 'supporting', status: 'verified' as const, uploadedAt: new Date(), studentId: 'student-1' },
+  { id: 'doc-1', name: 'Passport Copy', type: 'identity', status: 'verified' as const, uploadedAt: new Date(), studentId: 'student-1', url: '#' },
+  { id: 'doc-2', name: 'Academic Transcript', type: 'academic', status: 'verified' as const, uploadedAt: new Date(), studentId: 'student-1', url: '#' },
+  { id: 'doc-3', name: 'English Certificate', type: 'language', status: 'pending' as const, uploadedAt: new Date(), studentId: 'student-1', url: '#' },
+  { id: 'doc-4', name: 'Bank Statement', type: 'financial', status: 'error' as const, uploadedAt: new Date(), studentId: 'student-1', url: '#' },
+  { id: 'doc-5', name: 'Recommendation Letter', type: 'supporting', status: 'locked' as const, studentId: 'student-1', url: '#' },
+  { id: 'doc-6', name: 'Personal Statement', type: 'supporting', status: 'verified' as const, uploadedAt: new Date(), studentId: 'student-1', url: '#' },
 ];
 
 export const mockUniversityApplications = [
   { id: 'app-1', studentId: 'student-1', universityName: 'Harvard University', program: 'Computer Science', status: 'pending' as const, priority: 1 },
   { id: 'app-2', studentId: 'student-1', universityName: 'MIT', program: 'Engineering', status: 'submitted' as const, submittedAt: new Date('2024-02-01'), priority: 2 },
   { id: 'app-3', studentId: 'student-1', universityName: 'Stanford University', program: 'Data Science', status: 'accepted' as const, submittedAt: new Date('2024-01-15'), responseAt: new Date('2024-03-01'), priority: 3 },
+  { id: 'app-4', studentId: 'student-1', universityName: 'Yale University', program: 'Business Administration', status: 'rejected' as const, submittedAt: new Date('2024-01-20'), responseAt: new Date('2024-03-15'), priority: 4 },
 ];
 
 export const mockInvoices = [
@@ -297,6 +298,12 @@ export const mockNotifications = [
 export const mockAuditLogs = [
   { id: 'log-1', userId: 'admin-1', userName: 'Michael Chen', action: 'Approved Application', details: 'Application for Harvard submitted', entityType: 'application', entityId: 'app-1', timestamp: new Date(), ipAddress: '192.168.1.1' },
   { id: 'log-2', userId: 'staff-1', userName: 'Sarah Johnson', action: 'Verified Document', details: 'Passport copy verified', entityType: 'document', entityId: 'doc-1', timestamp: new Date(), ipAddress: '192.168.1.2' },
+];
+
+export const mockOffers = [
+  { id: 'offer-1', universityName: 'Harvard University', program: 'Computer Science', status: 'accepted' as const, locked: false, unlockedAt: '2024-01-15', admissionLetter: true, jw202: true },
+  { id: 'offer-2', universityName: 'MIT', program: 'Engineering', status: 'pending' as const, locked: true, admissionLetter: false, jw202: false },
+  { id: 'offer-3', universityName: 'Stanford University', program: 'Data Science', status: 'accepted' as const, locked: false, unlockedAt: '2024-01-20', admissionLetter: true, jw202: false },
 ];
 
 export const mockKPIData = {

@@ -3,12 +3,14 @@ import { Bell, CheckCheck, X, AlertTriangle, Info, CheckCircle, XCircle } from '
 import { motion, AnimatePresence } from 'framer-motion';
 import { useEduFlare } from '@/contexts/EduFlareContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useEffectiveUser } from '@/hooks/useEffectiveUser';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 
 export const NotificationBell: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const { user } = useAuth();
+  const { effectiveUser, isImpersonating } = useEffectiveUser();
   const { 
     notifications, 
     getUnreadNotificationCount, 
@@ -16,7 +18,7 @@ export const NotificationBell: React.FC = () => {
     markAllNotificationsRead 
   } = useEduFlare();
 
-  const userId = user?.id || 'demo-user';
+  const userId = (isImpersonating ? effectiveUser?.id : user?.id) || 'demo-user';
   const unreadCount = getUnreadNotificationCount(userId);
   const userNotifications = notifications.slice(0, 10); // Show last 10
 

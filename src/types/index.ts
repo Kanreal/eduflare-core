@@ -27,7 +27,7 @@ export type StudentStatus =
   | 'completed'             // Final: Process complete
   | 'cancelled';            // Student withdrew
 
-export type DocumentStatus = 'pending' | 'verified' | 'error' | 'locked';
+export type DocumentStatus = 'pending' | 'verified' | 'error' | 'locked' | 'action_required';
 
 export type ContractStatus = 'draft' | 'pending' | 'pending_signature' | 'signed' | 'expired' | 'cancelled';
 
@@ -86,8 +86,15 @@ export interface Student extends User {
   // Master Application Profile (Phase D)
   passportNumber?: string;
   passportExpiry?: Date;
+  passportIssuedAt?: Date;
+  gender?: string;
+  maritalStatus?: string;
+  nativeLanguage?: string;
+  religion?: string;
+  placeOfBirth?: string;
   currentAddress?: string;
   permanentAddress?: string;
+  homeAddress?: string;
   fatherName?: string;
   fatherOccupation?: string;
   motherName?: string;
@@ -172,7 +179,7 @@ export interface Lead {
 export interface Document {
   id: string;
   name: string;
-  type: 'passport' | 'transcript' | 'certificate' | 'bank_statement' | 'recommendation' | 'personal_statement' | 'admission_letter' | 'jw202' | 'other';
+  type: 'passport' | 'transcript' | 'certificate' | 'bank_statement' | 'recommendation' | 'personal_statement' | 'admission_letter' | 'jw202' | 'financial' | 'other';
   status: DocumentStatus;
   uploadedAt?: Date;
   verifiedAt?: Date;
@@ -227,6 +234,12 @@ export interface Invoice {
   dueDate: Date;
   paidAt?: Date;
   description: string;
+
+  // Audit & tracking fields
+  createdBy?: string; // Staff ID who created/processed the transaction
+  createdByName?: string; // Staff name for display
+  receiptFileUrl?: string; // Reference to uploaded receipt file
+  receiptFileName?: string; // Original filename of receipt
 
   // For immutable ledger
   isReversal: boolean;

@@ -9,9 +9,18 @@ interface ProtectedRouteProps {
 }
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles }) => {
-  const { isAuthenticated, role: actualRole } = useAuth();
+  const { isAuthenticated, role: actualRole, isLoading } = useAuth();
   const { isImpersonating, impersonatedUser, impersonationType } = useImpersonation();
   const location = useLocation();
+
+  // Show loading while authentication state is being restored from localStorage
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   // If auth context is not yet available (during fallback), show loading or return null
   // This prevents premature redirects during HMR or component initialization

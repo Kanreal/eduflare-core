@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  DollarSign, 
-  Search, 
-  Filter, 
+import {
+  DollarSign,
+  Search,
+  Filter,
   Download,
   CheckCircle,
   XCircle,
@@ -12,6 +12,10 @@ import {
   Users,
   ArrowUpRight,
   ArrowDownLeft,
+  Calendar,
+  User,
+  Eye,
+  FileText,
 } from 'lucide-react';
 import { PortalLayout } from '@/components/layout/PortalLayout';
 import { StatusBadge, Avatar, EmptyState } from '@/components/ui/EduFlareUI';
@@ -33,7 +37,17 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
+import {
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from '@/components/ui/drawer';
 import { formatCurrency } from '@/lib/constants';
+import { useEduFlare } from '@/contexts/EduFlareContext';
+import { format } from 'date-fns';
 
 // Mock transactions
 const mockTransactions = [
@@ -69,23 +83,87 @@ const mockCommissions = [
 ];
 
 const FinancialHub: React.FC = () => {
+  const { invoices, students, staff } = useEduFlare();
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [dateFilter, setDateFilter] = useState<string>('all');
+  const [selectedTransaction, setSelectedTransaction] = useState<any>(null);
+  const [isDetailsDrawerOpen, setIsDetailsDrawerOpen] = useState(false);
   const [selectedRefund, setSelectedRefund] = useState<typeof mockRefundRequests[0] | null>(null);
   const [isApproveDialogOpen, setIsApproveDialogOpen] = useState(false);
 
-  const filteredTransactions = allTransactions.filter((tx) => {
-    const matchesSearch = tx.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      tx.studentName.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesType = typeFilter === 'all' || tx.type === typeFilter;
-    return matchesSearch && matchesType;
-  });
+  // Filter transactions based on search, type, status, and date
+  const filteredTransactions = useMemo(() => {
+    return invoices.filter(invoice => {
+      // Search filter
+      const matchesSearch = searchQuery === '' ||
+        invoice.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        invoice.studentName.toLowerCase().includes(searchQuery.toLowerCase());
 
-  const totalRevenue = mockTransactions
-    .filter(t => t.type === 'payment' && t.status === 'completed')
+      // Type filter
+      const matchesType = typeFilter === 'all' || invoice.type === typeFilter;
+
+      // Status filter
+      const matchesStatus = statusFilter === 'all' || invoice.status === statusFilter;
+
+      // Date filter
+      let matchesDate = true;
+      if (dateFilter !== 'all') {
+        const invoiceDate = invoice.paidAt || invoice.dueDate;
+        const now = new Date();
+        const currentMonth = now.getMonth();
+        const currentYear = now.getFullYear();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+        switch (dateFilter) {
+          case 'today':
+            const invoiceDay = new Date(invoiceDate.getFullYear(), invoiceDate.getMonth(), invoiceDate.getDate());
+            matchesDate = invoiceDay.getTime() === today.getTime();
+            break;
+          case 'thisWeek':
+            const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            matchesDate = invoiceDate >= weekAgo;
+            break;
+          case 'thisMonth':
+            matchesDate = invoiceDate.getMonth() === currentMonth && invoiceDate.getFullYear() === currentYear;
+            break;
+          case 'lastMonth':
+            const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+            const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+            matchesDate = invoiceDate.getMonth() === lastMonth && invoiceDate.getFullYear() === lastMonthYear;
+            break;
+        }
+      }
+
+      return matchesSearch && matchesType && matchesStatus && matchesDate;
+    });
+  }, [invoices, searchQuery, typeFilter, statusFilter, dateFilter]);
+
+  // Calculate summary metrics from filtered transactions
+  const summaryMetrics = useMemo(() => {
+    const totalRevenue = filteredTransactions
+      .filter(t => t.status === 'paid')
+      .reduce((sum, t) => sum + t.amount, 0);
+
+    const pendingAmount = filteredTransactions
+      .filter(t => t.status === 'pending')
+      .reduce((sum, t) => sum + t.amount, 0);
+
+    return {
+      totalRevenue,
+      pendingAmount,
+      transactionCount: filteredTransactions.length,
+    };
+  }, [filteredTransactions]);
+
+  const totalRevenue = invoices
+    .filter(t => t.status === 'paid')
     .reduce((sum, t) => sum + t.amount, 0);
 
-  const pendingRefunds = mockRefundRequests.reduce((sum, r) => sum + r.amount, 0);
+  const pendingRefunds = invoices
+    .filter(t => t.type === 'refund' && t.status === 'pending')
+    .reduce((sum, t) => sum + t.amount, 0);
 
   const handleApproveRefund = (refund: typeof mockRefundRequests[0]) => {
     setSelectedRefund(refund);
@@ -114,7 +192,7 @@ const FinancialHub: React.FC = () => {
               <div>
                 <p className="text-sm text-muted-foreground">Total Revenue</p>
                 <p className="text-2xl font-bold text-foreground tabular-nums mt-1">
-                  ${totalRevenue.toLocaleString()}
+                  ${summaryMetrics.totalRevenue.toLocaleString()}
                 </p>
               </div>
               <div className="p-3 rounded-full bg-success/10">
@@ -125,9 +203,9 @@ const FinancialHub: React.FC = () => {
           <div className="rounded-xl border border-border bg-card p-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Pending Refunds</p>
+                <p className="text-sm text-muted-foreground">Pending Amount</p>
                 <p className="text-2xl font-bold text-warning tabular-nums mt-1">
-                  ${pendingRefunds.toLocaleString()}
+                  ${summaryMetrics.pendingAmount.toLocaleString()}
                 </p>
               </div>
               <div className="p-3 rounded-full bg-warning/10">
@@ -138,26 +216,26 @@ const FinancialHub: React.FC = () => {
           <div className="rounded-xl border border-border bg-card p-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Commission Payable</p>
+                <p className="text-sm text-muted-foreground">Total Transactions</p>
                 <p className="text-2xl font-bold text-primary tabular-nums mt-1">
-                  ${mockCommissions.reduce((sum, c) => sum + c.pendingAmount, 0).toLocaleString()}
+                  {summaryMetrics.transactionCount}
                 </p>
               </div>
               <div className="p-3 rounded-full bg-primary/10">
-                <Users className="w-5 h-5 text-primary" />
+                <FileText className="w-5 h-5 text-primary" />
               </div>
             </div>
           </div>
           <div className="rounded-xl border border-border bg-card p-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">This Month</p>
+                <p className="text-sm text-muted-foreground">Opening Book Fees</p>
                 <p className="text-2xl font-bold text-foreground tabular-nums mt-1">
-                  ${(28000).toLocaleString()}
+                  {invoices.filter(i => i.type === 'opening_book' && i.status === 'paid').length}
                 </p>
               </div>
               <div className="p-3 rounded-full bg-gold/10">
-                <DollarSign className="w-5 h-5 text-gold" />
+                <FileText className="w-5 h-5 text-gold" />
               </div>
             </div>
           </div>
@@ -190,15 +268,40 @@ const FinancialHub: React.FC = () => {
                   />
                 </div>
                 <Select value={typeFilter} onValueChange={setTypeFilter}>
-                  <SelectTrigger className="w-full sm:w-40">
+                  <SelectTrigger className="w-full sm:w-32">
                     <Filter className="w-4 h-4 mr-2" />
                     <SelectValue placeholder="Type" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Types</SelectItem>
-                    <SelectItem value="payment">Payments</SelectItem>
-                    <SelectItem value="lead_payment">Lead Payments</SelectItem>
-                    <SelectItem value="refund">Refunds</SelectItem>
+                    <SelectItem value="opening_book">Opening Book</SelectItem>
+                    <SelectItem value="deposit">Deposit</SelectItem>
+                    <SelectItem value="balance">Balance</SelectItem>
+                    <SelectItem value="refund">Refund</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-full sm:w-32">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="paid">Paid</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="overdue">Overdue</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={dateFilter} onValueChange={setDateFilter}>
+                  <SelectTrigger className="w-full sm:w-32">
+                    <Calendar className="w-4 h-4 mr-2" />
+                    <SelectValue placeholder="Date" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Time</SelectItem>
+                    <SelectItem value="today">Today</SelectItem>
+                    <SelectItem value="thisWeek">This Week</SelectItem>
+                    <SelectItem value="thisMonth">This Month</SelectItem>
+                    <SelectItem value="lastMonth">Last Month</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -215,59 +318,185 @@ const FinancialHub: React.FC = () => {
                         <th className="text-right p-4 text-sm font-medium text-muted-foreground">Amount</th>
                         <th className="text-left p-4 text-sm font-medium text-muted-foreground">Status</th>
                         <th className="text-left p-4 text-sm font-medium text-muted-foreground hidden lg:table-cell">Date</th>
+                        <th className="text-right p-4 text-sm font-medium text-muted-foreground">Actions</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-border">
-                      {filteredTransactions.map((tx, index) => (
-                        <motion.tr
-                          key={tx.id}
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: index * 0.03 }}
-                          className="hover:bg-muted/30 transition-colors"
-                        >
-                          <td className="p-4">
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                              tx.type === 'payment' || tx.type === 'lead_payment' ? 'bg-success/10' : 'bg-error/10'
-                            }`}>
-                              {tx.type === 'payment' || tx.type === 'lead_payment' ? (
-                                <ArrowDownLeft className="w-4 h-4 text-success" />
-                              ) : (
-                                <ArrowUpRight className="w-4 h-4 text-error" />
-                              )}
-                            </div>
+                <tbody className="divide-y divide-border">
+                      {filteredTransactions.length > 0 ? (
+                        filteredTransactions.map((invoice, index) => {
+                          const getTypeDisplay = (type: string) => {
+                            switch (type) {
+                              case 'opening_book': return 'Opening Book';
+                              case 'deposit': return 'Deposit';
+                              case 'balance': return 'Balance Payment';
+                              case 'refund': return 'Refund';
+                              default: return type;
+                            }
+                          };
+
+                          return (
+                            <motion.tr
+                              key={invoice.id}
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: index * 0.02 }}
+                              className="hover:bg-muted/30 transition-colors"
+                            >
+                              <td className="p-4">
+                                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                                  invoice.type !== 'refund' ? 'bg-success/10' : 'bg-error/10'
+                                }`}>
+                                  {invoice.type !== 'refund' ? (
+                                    <ArrowDownLeft className="w-4 h-4 text-success" />
+                                  ) : (
+                                    <ArrowUpRight className="w-4 h-4 text-error" />
+                                  )}
+                                </div>
+                              </td>
+                              <td className="p-4">
+                                <div>
+                                  <p className="font-medium text-foreground">{getTypeDisplay(invoice.type)}</p>
+                                  <p className="text-xs text-muted-foreground">{invoice.description}</p>
+                                </div>
+                              </td>
+                              <td className="p-4 hidden md:table-cell">
+                                <div className="flex items-center gap-2">
+                                  <Avatar name={invoice.studentName} size="sm" />
+                                  <span className="text-sm text-foreground">{invoice.studentName}</span>
+                                </div>
+                              </td>
+                              <td className="p-4 text-right">
+                                <span className={`font-semibold tabular-nums ${
+                                  invoice.type !== 'refund' ? 'text-success' : 'text-error'
+                                }`}>
+                                  {invoice.type !== 'refund' ? '+' : '-'}
+                                  {invoice.currency === 'TZS' ? 'TZS ' : '$'}{invoice.amount.toLocaleString()}
+                                </span>
+                              </td>
+                              <td className="p-4">
+                                <StatusBadge variant={
+                                  invoice.status === 'paid' ? 'success' :
+                                  invoice.status === 'pending' ? 'warning' :
+                                  invoice.status === 'overdue' ? 'error' : 'muted'
+                                }>
+                                  {invoice.status}
+                                </StatusBadge>
+                              </td>
+                              <td className="p-4 hidden lg:table-cell">
+                                <span className="text-sm text-muted-foreground">
+                                  {invoice.paidAt ? format(invoice.paidAt, 'MMM d, yyyy') : format(invoice.dueDate, 'MMM d, yyyy')}
+                                </span>
+                              </td>
+                              <td className="p-4 text-right">
+                                <Drawer>
+                                  <DrawerTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => setSelectedTransaction(invoice)}
+                                      className="gap-1"
+                                    >
+                                      <Eye className="w-4 h-4" />
+                                      Details
+                                    </Button>
+                                  </DrawerTrigger>
+                                  <DrawerContent>
+                                    <DrawerHeader>
+                                      <DrawerTitle>Transaction Details</DrawerTitle>
+                                      <DrawerDescription>
+                                        Complete audit information for this transaction
+                                      </DrawerDescription>
+                                    </DrawerHeader>
+                                    <div className="p-6 space-y-6">
+                                      <div className="grid grid-cols-2 gap-6">
+                                        <div className="space-y-4">
+                                          <div>
+                                            <h4 className="font-medium text-sm text-muted-foreground mb-2">Transaction Info</h4>
+                                            <div className="space-y-2">
+                                              <div className="flex justify-between">
+                                                <span className="text-sm">Type:</span>
+                                                <span className="font-medium">{getTypeDisplay(invoice.type)}</span>
+                                              </div>
+                                              <div className="flex justify-between">
+                                                <span className="text-sm">Status:</span>
+                                                <StatusBadge variant={
+                                                  invoice.status === 'paid' ? 'success' :
+                                                  invoice.status === 'pending' ? 'warning' :
+                                                  invoice.status === 'overdue' ? 'error' : 'muted'
+                                                } size="sm">
+                                                  {invoice.status}
+                                                </StatusBadge>
+                                              </div>
+                                              <div className="flex justify-between">
+                                                <span className="text-sm">Amount:</span>
+                                                <span className="font-medium tabular-nums">
+                                                  {invoice.currency === 'TZS' ? 'TZS ' : '$'}{invoice.amount.toLocaleString()}
+                                                </span>
+                                              </div>
+                                              <div className="flex justify-between">
+                                                <span className="text-sm">Date:</span>
+                                                <span className="font-medium">
+                                                  {invoice.paidAt ? format(invoice.paidAt, 'PPP') : format(invoice.dueDate, 'PPP')}
+                                                </span>
+                                              </div>
+                                            </div>
+                                          </div>
+                                        </div>
+
+                                        <div className="space-y-4">
+                                          <div>
+                                            <h4 className="font-medium text-sm text-muted-foreground mb-2">Audit Information</h4>
+                                            <div className="space-y-2">
+                                              <div className="flex justify-between items-center">
+                                                <span className="text-sm">Created By:</span>
+                                                <div className="flex items-center gap-2">
+                                                  {invoice.createdBy && (
+                                                    <Avatar name={invoice.createdByName || 'Unknown'} size="sm" />
+                                                  )}
+                                                  <span className="font-medium text-sm">
+                                                    {invoice.createdByName || 'Unknown Staff'}
+                                                  </span>
+                                                </div>
+                                              </div>
+                                              {invoice.receiptFileName && (
+                                                <div className="flex justify-between items-center">
+                                                  <span className="text-sm">Receipt:</span>
+                                                  <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => window.open(invoice.receiptFileUrl, '_blank')}
+                                                    className="gap-1"
+                                                  >
+                                                    <FileText className="w-3 h-3" />
+                                                    {invoice.receiptFileName}
+                                                  </Button>
+                                                </div>
+                                              )}
+                                              <div className="flex justify-between">
+                                                <span className="text-sm">Reference:</span>
+                                                <span className="font-mono text-xs bg-muted px-2 py-1 rounded">
+                                                  {invoice.id.slice(-8).toUpperCase()}
+                                                </span>
+                                              </div>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </DrawerContent>
+                                </Drawer>
+                              </td>
+                            </motion.tr>
+                          );
+                        })
+                      ) : (
+                        <tr>
+                          <td colSpan={7} className="p-8 text-center text-muted-foreground">
+                            No transactions found matching your filters.
                           </td>
-                          <td className="p-4">
-                            <p className="font-medium text-foreground">{tx.description}</p>
-                            <p className="text-xs text-muted-foreground md:hidden">{tx.studentName}</p>
-                          </td>
-                          <td className="p-4 hidden md:table-cell">
-                            <div className="flex items-center gap-2">
-                              <Avatar name={tx.studentName} size="sm" />
-                              <span className="text-sm text-foreground">{tx.studentName}</span>
-                            </div>
-                          </td>
-                          <td className="p-4 text-right">
-                            <span className={`font-semibold tabular-nums ${
-                              tx.type === 'payment' || tx.type === 'lead_payment' ? 'text-success' : 'text-error'
-                            }`}>
-                              {tx.type === 'payment' || tx.type === 'lead_payment' ? '+' : '-'}
-                              {formatCurrency(tx.amount, tx.currency || 'USD')}
-                            </span>
-                          </td>
-                          <td className="p-4">
-                            <StatusBadge variant={tx.status === 'completed' ? 'success' : 'warning'}>
-                              {tx.status}
-                            </StatusBadge>
-                          </td>
-                          <td className="p-4 hidden lg:table-cell">
-                            <span className="text-sm text-muted-foreground">
-                              {tx.createdAt.toLocaleDateString()}
-                            </span>
-                          </td>
-                        </motion.tr>
-                      ))}
-                    </tbody>
+                        </tr>
+                      )}
+                </tbody>
                   </table>
                 </div>
               </div>

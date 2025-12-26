@@ -16,6 +16,9 @@ import {
   History,
   Save,
   X,
+  CreditCard,
+  Upload,
+  CheckCircle
 } from 'lucide-react';
 import { PortalLayout } from '@/components/layout/PortalLayout';
 import { StatusBadge, Avatar } from '@/components/ui/EduFlareUI';
@@ -59,7 +62,10 @@ const LeadDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { getLeadById, updateLead, changeLeadStatus, convertLeadToStudent, staff, logAudit } = useEduFlare();
+  const { getLeadById, updateLead, changeLeadStatus, convertLeadToStudent, staff, logAudit, createInvoice, addDocument } = useEduFlare();
+  
+  // Auth context for role check (simulated)
+  const role = 'staff'; 
 
   const lead = getLeadById(id || '');
   const [isEditing, setIsEditing] = useState(false);
@@ -74,16 +80,23 @@ const LeadDetail: React.FC = () => {
     message: lead?.message || '',
   });
 
+  // Conversion State
+  const [convAmount, setConvAmount] = useState<number>(50000);
+  const [convCurrency, setConvCurrency] = useState<'TZS' | 'USD'>('TZS');
+  const [convReceiptFile, setConvReceiptFile] = useState<File | null>(null);
+  const [screeningData, setScreeningData] = useState({ nationality: '', dob: '', grade: '' }); // Phase B Requirement
+  const [convErrors, setConvErrors] = useState<Record<string,string>>({});
+  const [tempPasswordToShow, setTempPasswordToShow] = useState<string | null>(null);
+  const [convertedStudentId, setConvertedStudentId] = useState<string | null>(null);
+
   if (!lead) {
     return (
       <PortalLayout portal="staff">
         <div className="flex flex-col items-center justify-center min-h-[50vh]">
           <User className="w-12 h-12 text-muted-foreground mb-4" />
           <h2 className="text-xl font-semibold text-foreground mb-2">Lead Not Found</h2>
-          <p className="text-muted-foreground mb-4">The lead you're looking for doesn't exist.</p>
           <Button onClick={() => navigate('/staff/leads')}>
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Leads
+            <ArrowLeft className="w-4 h-4 mr-2" /> Back to Leads
           </Button>
         </div>
       </PortalLayout>
@@ -113,10 +126,7 @@ const LeadDetail: React.FC = () => {
       entityId: lead.id,
       isOverride: false,
     });
-    toast({
-      title: "Lead Updated",
-      description: "Lead information has been saved successfully.",
-    });
+    toast({ title: "Lead Updated", description: "Information saved successfully." });
     setIsEditing(false);
   };
 
@@ -128,56 +138,86 @@ const LeadDetail: React.FC = () => {
         userName: 'Current User',
         userRole: 'staff',
         action: 'Lead Status Changed',
-        details: `Changed lead ${lead.name} status from ${lead.status} to ${newStatus}`,
+        details: `Changed status to ${newStatus}`,
         entityType: 'lead',
         entityId: lead.id,
         isOverride: false,
-        previousValue: lead.status,
-        newValue: newStatus,
       });
-      toast({
-        title: "Status Updated",
-        description: `Lead status changed to ${newStatus}.`,
-      });
-    } else {
-      toast({
-        title: "Invalid Transition",
-        description: "This status transition is not allowed.",
-        variant: "destructive",
-      });
+      toast({ title: "Status Updated", description: `Lead is now ${newStatus}.` });
     }
   };
 
   const handleConvert = () => {
     const assignedStaffId = lead.assignedTo || staff[0]?.id;
     if (!assignedStaffId) {
-      toast({
-        title: "No Staff Assigned",
-        description: "Please assign a staff member before converting.",
-        variant: "destructive",
-      });
+      toast({ title: "Validation Error", description: "Assign staff before converting.", variant: "destructive" });
+      return;
+    }
+
+    // Validation for Financials & Screening
+    const errors: Record<string,string> = {};
+    if (!convAmount || convAmount <= 0) errors.amount = 'Payment amount is required';
+    if (!convReceiptFile) errors.receipt = 'Payment receipt is required';
+    if (!screeningData.nationality) errors.nationality = 'Nationality required for screening';
+    
+    if (Object.keys(errors).length > 0) {
+      setConvErrors(errors);
       return;
     }
     
+    // 1. Create Student
     const newStudent = convertLeadToStudent(lead.id, assignedStaffId);
+    
     if (newStudent) {
+      // 2. Record Financial Event (Opening Book)
+      createInvoice({
+        studentId: newStudent.id,
+        studentName: newStudent.name,
+        type: 'opening_book',
+        amount: convAmount,
+        currency: convCurrency,
+        status: 'paid',
+        dueDate: new Date(),
+        paidAt: new Date(),
+        description: 'Opening Book / Consultation Fee',
+        isReversal: false,
+      });
+
+      // 3. Store Receipt
+      const fileUrl = window.URL.createObjectURL(convReceiptFile as File);
+      addDocument({
+        name: `Opening Book Receipt - ${newStudent.name}`,
+        type: 'financial',
+        status: 'verified',
+        uploadedAt: new Date(),
+        verifiedAt: new Date(),
+        studentId: newStudent.id,
+        isLocked: true,
+        isHidden: false,
+        fileUrl,
+      });
+
+      // 4. Update Student with Screening Data (Mock update)
+      // updateStudent(newStudent.id, { nationality: screeningData.nationality, ... }) 
+
       logAudit({
         userId: 'current-user',
         userName: 'Current User',
         userRole: 'staff',
         action: 'Lead Converted',
-        details: `Converted lead ${lead.name} to student`,
+        details: `Converted ${lead.name} to student. Fee Paid: ${convAmount} ${convCurrency}`,
         entityType: 'lead',
         entityId: lead.id,
         isOverride: false,
       });
-      toast({
-        title: "Lead Converted",
-        description: `${lead.name} has been converted to a student.`,
-      });
-      navigate(`/staff/students/${newStudent.id}`);
+
+      setTempPasswordToShow((newStudent as any).tempPassword || 'TEMP1234');
+      setConvertedStudentId(newStudent.id);
+      
+      // Reset form but keep dialog open for password
+      setConvReceiptFile(null);
+      setConvErrors({});
     }
-    setIsConvertDialogOpen(false);
   };
 
   const daysSinceContact = lead.lastContactAt 
@@ -190,8 +230,7 @@ const LeadDetail: React.FC = () => {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-4">
           <Button variant="ghost" size="sm" onClick={() => navigate('/staff/leads')}>
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Leads
+            <ArrowLeft className="w-4 h-4 mr-2" /> Back to Leads
           </Button>
         </div>
 
@@ -206,9 +245,7 @@ const LeadDetail: React.FC = () => {
                   {lead.status.charAt(0).toUpperCase() + lead.status.slice(1)}
                 </StatusBadge>
                 {daysSinceContact !== null && daysSinceContact > 7 && (
-                  <StatusBadge variant="warning">
-                    Idle {daysSinceContact} days
-                  </StatusBadge>
+                  <StatusBadge variant="warning">Idle {daysSinceContact} days</StatusBadge>
                 )}
               </div>
             </div>
@@ -222,15 +259,12 @@ const LeadDetail: React.FC = () => {
                   onClick={() => { if (lead.status !== 'converted') setIsEditing(true); }}
                   className="gap-2"
                   disabled={lead.status === 'converted'}
-                  title={lead.status === 'converted' ? 'Lead converted — edit in student profile' : undefined}
                 >
-                  <Edit className="w-4 h-4" />
-                  Edit Lead
+                  <Edit className="w-4 h-4" /> Edit Lead
                 </Button>
                 {lead.status !== 'converted' && lead.status !== 'lost' && (
                   <Button onClick={() => setIsConvertDialogOpen(true)} className="gap-2">
-                    <UserPlus className="w-4 h-4" />
-                    Convert to Student
+                    <UserPlus className="w-4 h-4" /> Convert to Student
                   </Button>
                 )}
               </>
@@ -238,12 +272,10 @@ const LeadDetail: React.FC = () => {
             {isEditing && (
               <>
                 <Button variant="outline" onClick={() => setIsEditing(false)} className="gap-2">
-                  <X className="w-4 h-4" />
-                  Cancel
+                  <X className="w-4 h-4" /> Cancel
                 </Button>
                 <Button onClick={handleSave} className="gap-2">
-                  <Save className="w-4 h-4" />
-                  Save Changes
+                  <Save className="w-4 h-4" /> Save Changes
                 </Button>
               </>
             )}
@@ -252,7 +284,7 @@ const LeadDetail: React.FC = () => {
 
         {/* Main Content */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column */}
+          {/* Left Column: Lead Info */}
           <div className="lg:col-span-2 space-y-6">
             <Card>
               <CardHeader>
@@ -265,142 +297,60 @@ const LeadDetail: React.FC = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="name">Full Name</Label>
-                        <Input
-                          id="name"
-                          value={editForm.name}
-                          onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                        />
+                        <Input id="name" value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="email">Email</Label>
-                        <Input
-                          id="email"
-                          type="email"
-                          value={editForm.email}
-                          onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
-                        />
+                        <Input id="email" type="email" value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} />
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="phone">Phone</Label>
-                        <Input
-                          id="phone"
-                          value={editForm.phone}
-                          onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
-                        />
+                        <Input id="phone" value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="studyGoal">Study Goal</Label>
-                        <Select 
-                          value={editForm.studyGoal} 
-                          onValueChange={(value) => setEditForm({ ...editForm, studyGoal: value })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select goal" />
-                          </SelectTrigger>
+                        <Label>Study Goal</Label>
+                        <Select value={editForm.studyGoal} onValueChange={(value) => setEditForm({ ...editForm, studyGoal: value })}>
+                          <SelectTrigger><SelectValue placeholder="Select goal" /></SelectTrigger>
                           <SelectContent>
-                            {studyGoalOptions.map(opt => (
-                              <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                            ))}
+                            {studyGoalOptions.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
                           </SelectContent>
                         </Select>
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="preferredCountry">Preferred Country</Label>
-                        <Select 
-                          value={editForm.preferredCountry} 
-                          onValueChange={(value) => setEditForm({ ...editForm, preferredCountry: value })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select country" />
-                          </SelectTrigger>
+                        <Label>Preferred Country</Label>
+                        <Select value={editForm.preferredCountry} onValueChange={(value) => setEditForm({ ...editForm, preferredCountry: value })}>
+                          <SelectTrigger><SelectValue placeholder="Select country" /></SelectTrigger>
                           <SelectContent>
-                            {countryOptions.map(opt => (
-                              <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                            ))}
+                            {countryOptions.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
                           </SelectContent>
                         </Select>
                       </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="message">Initial Message</Label>
-                      <Textarea
-                        id="message"
-                        value={editForm.message}
-                        onChange={(e) => setEditForm({ ...editForm, message: e.target.value })}
-                        rows={3}
-                      />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="notes">Notes</Label>
-                      <Textarea
-                        id="notes"
-                        value={editForm.notes}
-                        onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
-                        rows={4}
-                        placeholder="Add private notes about this lead..."
-                      />
+                      <Textarea id="notes" value={editForm.notes} onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })} rows={4} />
                     </div>
                   </div>
                 ) : (
                   <div className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-1">
-                        <Label className="text-muted-foreground">Full Name</Label>
-                        <p className="font-medium flex items-center gap-2">
-                          <User className="w-4 h-4 text-muted-foreground" />
-                          {lead.name}
-                        </p>
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-muted-foreground">Email</Label>
-                        <p className="font-medium flex items-center gap-2">
-                          <Mail className="w-4 h-4 text-muted-foreground" />
-                          {lead.email}
-                        </p>
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-muted-foreground">Phone</Label>
-                        <p className="font-medium flex items-center gap-2">
-                          <Phone className="w-4 h-4 text-muted-foreground" />
-                          {lead.phone}
-                        </p>
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-muted-foreground">Source</Label>
-                        <p className="font-medium capitalize">{lead.source}</p>
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-muted-foreground">Study Goal</Label>
-                        <p className="font-medium flex items-center gap-2">
-                          <GraduationCap className="w-4 h-4 text-muted-foreground" />
-                          {studyGoalOptions.find(o => o.value === lead.studyGoal)?.label || 'Not specified'}
-                        </p>
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-muted-foreground">Preferred Country</Label>
-                        <p className="font-medium flex items-center gap-2">
-                          <MapPin className="w-4 h-4 text-muted-foreground" />
-                          {countryOptions.find(o => o.value === lead.preferredCountry)?.label || 'Not specified'}
-                        </p>
-                      </div>
+                      <div className="space-y-1"><Label className="text-muted-foreground">Full Name</Label><p className="font-medium flex items-center gap-2"><User className="w-4 h-4 text-muted-foreground" />{lead.name}</p></div>
+                      <div className="space-y-1"><Label className="text-muted-foreground">Email</Label><p className="font-medium flex items-center gap-2"><Mail className="w-4 h-4 text-muted-foreground" />{lead.email}</p></div>
+                      <div className="space-y-1"><Label className="text-muted-foreground">Phone</Label><p className="font-medium flex items-center gap-2"><Phone className="w-4 h-4 text-muted-foreground" />{lead.phone}</p></div>
+                      <div className="space-y-1"><Label className="text-muted-foreground">Source</Label><p className="font-medium capitalize">{lead.source}</p></div>
+                      <div className="space-y-1"><Label className="text-muted-foreground">Study Goal</Label><p className="font-medium flex items-center gap-2"><GraduationCap className="w-4 h-4 text-muted-foreground" />{studyGoalOptions.find(o => o.value === lead.studyGoal)?.label || 'Not specified'}</p></div>
+                      <div className="space-y-1"><Label className="text-muted-foreground">Preferred Country</Label><p className="font-medium flex items-center gap-2"><MapPin className="w-4 h-4 text-muted-foreground" />{countryOptions.find(o => o.value === lead.preferredCountry)?.label || 'Not specified'}</p></div>
                     </div>
-
                     {lead.message && (
                       <div className="border-t border-border pt-4">
                         <Label className="text-muted-foreground">Initial Message</Label>
-                        <div className="mt-2 p-3 rounded-lg bg-muted/50 flex items-start gap-2">
-                          <MessageSquare className="w-4 h-4 text-muted-foreground mt-0.5" />
-                          <p className="text-sm">{lead.message}</p>
-                        </div>
+                        <div className="mt-2 p-3 rounded-lg bg-muted/50 flex items-start gap-2"><MessageSquare className="w-4 h-4 text-muted-foreground mt-0.5" /><p className="text-sm">{lead.message}</p></div>
                       </div>
                     )}
-
                     {lead.notes && (
                       <div className="border-t border-border pt-4">
                         <Label className="text-muted-foreground">Notes</Label>
-                        <div className="mt-2 p-3 rounded-lg bg-muted/50">
-                          <p className="text-sm">{lead.notes}</p>
-                        </div>
+                        <div className="mt-2 p-3 rounded-lg bg-muted/50"><p className="text-sm">{lead.notes}</p></div>
                       </div>
                     )}
                   </div>
@@ -409,35 +359,21 @@ const LeadDetail: React.FC = () => {
             </Card>
           </div>
 
-          {/* Right Column */}
+          {/* Right Column: Status & Timeline */}
           <div className="space-y-6">
-            {/* Status Actions */}
             <Card>
-              <CardHeader>
-                <CardTitle>Status Management</CardTitle>
-              </CardHeader>
+              <CardHeader><CardTitle>Status Management</CardTitle></CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label className="text-muted-foreground">Current Status</Label>
-                  <StatusBadge variant={getStatusVariant(lead.status)}>
-                    {lead.status.charAt(0).toUpperCase() + lead.status.slice(1)}
-                  </StatusBadge>
+                  <StatusBadge variant={getStatusVariant(lead.status)}>{lead.status.charAt(0).toUpperCase() + lead.status.slice(1)}</StatusBadge>
                 </div>
-
                 {allowedTransitions.length > 0 && (
                   <div className="space-y-2">
                     <Label className="text-muted-foreground">Change Status</Label>
                     <div className="flex flex-wrap gap-2">
                       {allowedTransitions.map((status) => (
-                        <Button
-                          key={status}
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleStatusChange(status)}
-                          className="capitalize"
-                        >
-                          {status}
-                        </Button>
+                        <Button key={status} variant="outline" size="sm" onClick={() => handleStatusChange(status)} className="capitalize">{status}</Button>
                       ))}
                     </div>
                   </div>
@@ -445,102 +381,145 @@ const LeadDetail: React.FC = () => {
               </CardContent>
             </Card>
 
-            {/* Timeline */}
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <History className="w-4 h-4" />
-                  Activity
-                </CardTitle>
-              </CardHeader>
+              <CardHeader><CardTitle className="flex items-center gap-2"><History className="w-4 h-4" /> Activity</CardTitle></CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   <div className="flex items-start gap-3">
                     <div className="w-2 h-2 rounded-full bg-primary mt-2" />
-                    <div>
-                      <p className="text-sm font-medium">Lead Created</p>
-                      <p className="text-xs text-muted-foreground">
-                        {new Date(lead.createdAt).toLocaleDateString()} at {new Date(lead.createdAt).toLocaleTimeString()}
-                      </p>
-                    </div>
+                    <div><p className="text-sm font-medium">Lead Created</p><p className="text-xs text-muted-foreground">{new Date(lead.createdAt).toLocaleDateString()}</p></div>
                   </div>
-                  {lead.lastContactAt && (
-                    <div className="flex items-start gap-3">
-                      <div className="w-2 h-2 rounded-full bg-success mt-2" />
-                      <div>
-                        <p className="text-sm font-medium">Last Contact</p>
-                        <p className="text-xs text-muted-foreground">
-                          {new Date(lead.lastContactAt).toLocaleDateString()} at {new Date(lead.lastContactAt).toLocaleTimeString()}
-                        </p>
-                      </div>
-                    </div>
-                  )}
                   {lead.convertedAt && (
                     <div className="flex items-start gap-3">
                       <div className="w-2 h-2 rounded-full bg-success mt-2" />
-                      <div>
-                        <p className="text-sm font-medium">Converted to Student</p>
-                        <p className="text-xs text-muted-foreground">
-                          {new Date(lead.convertedAt).toLocaleDateString()}
-                        </p>
-                      </div>
+                      <div><p className="text-sm font-medium">Converted to Student</p><p className="text-xs text-muted-foreground">{new Date(lead.convertedAt).toLocaleDateString()}</p></div>
                     </div>
                   )}
                 </div>
-              </CardContent>
-            </Card>
-
-            {/* Assigned Staff */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Assignment</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {assignedStaff ? (
-                  <div className="flex items-center gap-3">
-                    <Avatar name={assignedStaff.name} size="sm" />
-                    <div>
-                      <p className="font-medium">{assignedStaff.name}</p>
-                      <p className="text-sm text-muted-foreground">{assignedStaff.department}</p>
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-muted-foreground text-sm">No staff assigned</p>
-                )}
               </CardContent>
             </Card>
           </div>
         </div>
 
-        {/* Convert Dialog */}
+        {/* Convert Dialog with Financials */}
         <Dialog open={isConvertDialogOpen} onOpenChange={setIsConvertDialogOpen}>
-          <DialogContent>
+          <DialogContent className="max-w-lg">
             <DialogHeader>
               <DialogTitle>Convert Lead to Student</DialogTitle>
               <DialogDescription>
-                This will create a new student profile for <strong>{lead.name}</strong> and 
-                generate a service agreement. The lead will be marked as converted.
+                Convert <strong>{lead.name}</strong> to a Student. This action requires the "Opening Book" payment.
               </DialogDescription>
             </DialogHeader>
-            <div className="py-4">
-              <div className="rounded-lg border border-border bg-muted/50 p-4">
-                <div className="flex items-center gap-3">
-                  <Avatar name={lead.name} />
-                  <div>
-                    <p className="font-medium">{lead.name}</p>
-                    <p className="text-sm text-muted-foreground">{lead.email}</p>
+            <div className="py-2 space-y-4">
+              
+              {!tempPasswordToShow && (
+                <>
+                  <div className="rounded-lg border border-border bg-muted/30 p-3 flex items-center gap-3">
+                    <Avatar name={lead.name} size="sm" />
+                    <div className="text-sm">
+                      <p className="font-medium">{lead.name}</p>
+                      <p className="text-muted-foreground">{lead.email}</p>
+                    </div>
                   </div>
+
+                  {/* Screening Data (Phase B Requirement) */}
+                  <div className="space-y-3 pt-2">
+                    <h4 className="text-sm font-semibold flex items-center gap-2 text-primary">
+                      <User className="w-4 h-4" /> Screening Details
+                    </h4>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Nationality <span className="text-red-500">*</span></Label>
+                        <Select onValueChange={(v) => setScreeningData(p => ({...p, nationality: v}))}>
+                          <SelectTrigger className="h-8"><SelectValue placeholder="Select" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Tanzanian">Tanzanian</SelectItem>
+                            <SelectItem value="Kenyan">Kenyan</SelectItem>
+                            <SelectItem value="Ugandan">Ugandan</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        {convErrors.nationality && <p className="text-xs text-error">{convErrors.nationality}</p>}
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Date of Birth</Label>
+                        <Input type="date" className="h-8" onChange={(e) => setScreeningData(p => ({...p, dob: e.target.value}))} />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Financials */}
+                  <div className="space-y-3 pt-2 border-t border-border">
+                    <h4 className="text-sm font-semibold flex items-center gap-2 text-primary">
+                      <CreditCard className="w-4 h-4" /> Opening Book Payment
+                    </h4>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="col-span-2">
+                        <Label className="text-xs">Amount</Label>
+                        <Input type="number" className={`h-9 ${convErrors.amount ? 'border-error' : ''}`} value={convAmount} onChange={(e) => setConvAmount(Number(e.target.value))} />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Currency</Label>
+                        <Select value={convCurrency} onValueChange={(v: any) => setConvCurrency(v)}>
+                          <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                          <SelectContent><SelectItem value="TZS">TZS</SelectItem><SelectItem value="USD">USD</SelectItem></SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    {convErrors.amount && <p className="text-xs text-error">{convErrors.amount}</p>}
+
+                    <div className="space-y-1">
+                      <Label className="text-xs">Payment Receipt <span className="text-red-500">*</span></Label>
+                      <div className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${convErrors.receipt ? 'border-error bg-error/5' : 'border-border hover:bg-muted/50'}`}>
+                        <input type="file" id="receipt-upload" className="hidden" onChange={(e) => setConvReceiptFile(e.target.files ? e.target.files[0] : null)} />
+                        <label htmlFor="receipt-upload" className="cursor-pointer flex flex-col items-center">
+                          {convReceiptFile ? (
+                            <>
+                              <CheckCircle className="w-6 h-6 text-success mb-1" />
+                              <span className="text-sm font-medium text-success truncate max-w-[200px]">{convReceiptFile.name}</span>
+                            </>
+                          ) : (
+                            <>
+                              <Upload className="w-6 h-6 text-muted-foreground mb-1" />
+                              <span className="text-xs text-muted-foreground">Upload Receipt (PDF/Image)</span>
+                            </>
+                          )}
+                        </label>
+                      </div>
+                      {convErrors.receipt && <p className="text-xs text-error">{convErrors.receipt}</p>}
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Success State */}
+              {tempPasswordToShow && (
+                <div className="bg-success/10 border border-success/20 rounded-lg p-4 text-center space-y-3">
+                  <div className="w-12 h-12 bg-success rounded-full flex items-center justify-center mx-auto">
+                    <CheckCircle className="w-6 h-6 text-white" />
+                  </div>
+                  <h3 className="font-bold text-success-foreground">Conversion Successful!</h3>
+                  <div className="bg-white p-3 rounded border border-border">
+                    <p className="text-xs text-muted-foreground mb-1">Temporary Password:</p>
+                    <code className="text-lg font-mono font-bold select-all">{tempPasswordToShow}</code>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Copy this password and share it securely with the student.</p>
                 </div>
-              </div>
+              )}
+
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsConvertDialogOpen(false)}>
-                Cancel
-              </Button>
-              <Button onClick={handleConvert} className="gap-2">
-                <UserPlus className="w-4 h-4" />
-                Convert to Student
-              </Button>
+              {tempPasswordToShow ? (
+                <Button onClick={() => {
+                  setTempPasswordToShow(null);
+                  setIsConvertDialogOpen(false);
+                  if (convertedStudentId) navigate(`/staff/students/${convertedStudentId}`);
+                }}>Go to Student Profile</Button>
+              ) : (
+                <>
+                  <Button variant="outline" onClick={() => setIsConvertDialogOpen(false)}>Cancel</Button>
+                  <Button onClick={handleConvert}>Confirm Conversion</Button>
+                </>
+              )}
             </DialogFooter>
           </DialogContent>
         </Dialog>
