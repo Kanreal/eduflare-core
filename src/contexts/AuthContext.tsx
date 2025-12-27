@@ -36,6 +36,7 @@ export const useAuth = () => {
       login: async () => false,
       logout: () => {},
       switchRole: () => {},
+      registerAdmin: async () => false,
     };
   }
   return context;
