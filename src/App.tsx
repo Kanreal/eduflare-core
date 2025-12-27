@@ -14,6 +14,7 @@ import StudentLogin from "./pages/auth/StudentLogin";
 import InternalLogin from "./pages/auth/InternalLogin";
 import ForgotPassword from "./pages/auth/ForgotPassword";
 import ResetPassword from "./pages/auth/ResetPassword";
+import AdminRegister from "./pages/auth/AdminRegister";
 import BookConsultation from "./pages/public/BookConsultation";
 
 // Student Pages
@@ -81,6 +82,7 @@ const App = () => (
                 <Route path="/portal/login" element={<Navigate to="/login/internal" replace />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
+                <Route path="/register/admin" element={<AdminRegister />} />
                 
                 {/* Student Portal Routes - Protected */}
                 <Route path="/student/dashboard" element={<ProtectedRoute allowedRoles={['student']}><StudentDashboard /></ProtectedRoute>} />

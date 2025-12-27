@@ -167,6 +167,12 @@ const InternalLogin: React.FC = () => {
                 Student Sign In
               </Link>
             </p>
+            <p className="text-sm text-muted-foreground mt-2">
+              Need to create an admin account?{' '}
+              <Link to="/register/admin" className="font-medium text-primary hover:text-primary/80 transition-colors">
+                Register Admin
+              </Link>
+            </p>
           </div>
         </motion.div>
       </div>
